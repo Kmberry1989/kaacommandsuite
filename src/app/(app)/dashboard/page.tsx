@@ -5,12 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
-import { BarChart, LineChart, PieChart, Users, Newspaper, Heart } from "lucide-react";
+import { Users, Newspaper, Heart, BarChart as BarChartIcon } from "lucide-react";
 import {
   Bar,
   Line,
@@ -24,6 +22,8 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  PieChart,
+  BarChart,
 } from "recharts";
 
 const membershipData = [
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         description="Your central hub for events, memberships, and social media."
       >
         <Button>
-          <BarChart className="mr-2 h-4 w-4" />
+          <BarChartIcon className="mr-2 h-4 w-4" />
           Generate Report
         </Button>
       </PageHeader>
