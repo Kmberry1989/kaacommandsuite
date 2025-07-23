@@ -1,14 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltipContent,
   ChartLegendContent,
+  ChartLegend,
 } from "@/components/ui/chart";
-import { Users, Newspaper, Heart, BarChart as BarChartIcon } from "lucide-react";
+import { Users, Newspaper, Heart, BarChart as BarChartIcon, Lightbulb, FileText, Target, DollarSign, Loader2 } from "lucide-react";
 import {
   Bar,
   Line,
@@ -18,13 +20,25 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  Legend as RechartsLegend,
   ResponsiveContainer,
   AreaChart,
   Area,
   PieChart,
   BarChart,
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { extractInsights, ExtractInsightsOutput } from "@/ai/flows/extract-insights-from-community-data";
+import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const membershipData = [
   { month: "Jan", new: 4, renewals: 2 },
@@ -52,14 +66,61 @@ const socialData = [
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
 export default function DashboardPage() {
+  const [isReportDialogOpen, setReportDialogOpen] = useState(false);
+  const [report, setReport] = useState<ExtractInsightsOutput | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true);
+    setReport(null);
+    setReportDialogOpen(true);
+
+    const communityData = `
+      **Membership Growth:**
+      ${membershipData.map(d => `${d.month}: ${d.new} new members, ${d.renewals} renewals.`).join('\n')}
+
+      **Event Attendance:**
+      ${attendanceData.map(d => `${d.event}: ${d.attendance} attended out of ${d.tickets} tickets sold.`).join('\n')}
+
+      **Social Media Engagement:**
+      ${socialData.map(d => `${d.platform}: ${d.engagement}% engagement.`).join('\n')}
+
+      **Key Metrics:**
+      - Total Members: 1,234 (+20.1% from last month)
+      - Upcoming Events: 12 (3 new this week)
+      - Social Engagement: +5.2K impressions (+12% this month)
+    `;
+
+    try {
+      const result = await extractInsights({ communityData });
+      setReport(result);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error Generating Report",
+        description: "There was an issue creating the report. Please try again.",
+      });
+      setReportDialogOpen(false);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+
   return (
     <div className="flex-1 space-y-4">
       <PageHeader
         title="Dashboard"
         description="Your central hub for events, memberships, and social media."
       >
-        <Button>
-          <BarChartIcon className="mr-2 h-4 w-4" />
+        <Button onClick={handleGenerateReport} disabled={isGeneratingReport}>
+          {isGeneratingReport ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <BarChartIcon className="mr-2 h-4 w-4" />
+          )}
           Generate Report
         </Button>
       </PageHeader>
@@ -109,6 +170,7 @@ export default function DashboardPage() {
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <RechartsTooltip content={<ChartTooltipContent />} />
+                        <ChartLegend content={<ChartLegendContent />} />
                         <Area type="monotone" dataKey="new" stackId="1" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1))" fillOpacity={0.4} name="New Members" />
                         <Area type="monotone" dataKey="renewals" stackId="1" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" fillOpacity={0.4} name="Renewals" />
                     </AreaChart>
@@ -125,13 +187,13 @@ export default function DashboardPage() {
             <ChartContainer config={{}} className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                      <RechartsTooltip content={<ChartTooltipContent />} />
+                      <RechartsTooltip content={<ChartTooltipContent nameKey="platform" />} />
                       <Pie data={socialData} dataKey="engagement" nameKey="platform" cx="50%" cy="50%" outerRadius={100} label>
                       {socialData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                       </Pie>
-                      <RechartsLegend content={<ChartLegendContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
                   </PieChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -150,7 +212,7 @@ export default function DashboardPage() {
                         <XAxis dataKey="event" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <RechartsTooltip content={<ChartTooltipContent />} cursor={{fill: 'hsl(var(--accent) / 0.2)'}} />
-                        <RechartsLegend content={<ChartLegendContent />} />
+                        <ChartLegend content={<ChartLegendContent />} />
                         <Bar dataKey="tickets" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Tickets Sold" />
                         <Bar dataKey="attendance" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Attendance" />
                     </BarChart>
@@ -159,6 +221,58 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isReportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Generated Insights Report</DialogTitle>
+            <DialogDescription>
+              This AI-generated report provides a summary and analysis of your recent activities.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] p-4">
+            {isGeneratingReport ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : report ? (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline"><FileText className="h-5 w-5 text-primary"/> Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent><p className="text-muted-foreground">{report.summary}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline"><Target className="h-5 w-5 text-primary"/> Impact Metrics</CardTitle>
+                  </CardHeader>
+                  <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{report.impactMetrics}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline"><Lightbulb className="h-5 w-5 text-primary"/> Key Testimonials</CardTitle>
+                  </CardHeader>
+                  <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{report.keyTestimonials}</p></CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline"><DollarSign className="h-5 w-5 text-primary"/> Funding Justification</CardTitle>
+                  </CardHeader>
+                  <CardContent><p className="text-muted-foreground">{report.fundingJustification}</p></CardContent>
+                </Card>
+              </div>
+            ) : null}
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Wand2 } from "lucide-react";
+import { Wand2, Copy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
@@ -79,6 +79,14 @@ export default function ContentPage() {
       setIsLoading(false);
     }
   }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(generatedContent);
+    toast({
+      title: "Copied to Clipboard",
+      description: "The generated content has been copied.",
+    });
+  };
 
   return (
     <div>
@@ -214,7 +222,8 @@ export default function ContentPage() {
             )}
           </CardContent>
           <CardFooter>
-            <Button variant="outline" disabled={!generatedContent || isLoading}>
+            <Button variant="outline" onClick={handleCopy} disabled={!generatedContent || isLoading}>
+              <Copy className="mr-2 h-4 w-4"/>
               Copy to Clipboard
             </Button>
           </CardFooter>
