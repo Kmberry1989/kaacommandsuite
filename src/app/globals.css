@@ -83,3 +83,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add to the end of src/app/globals.css */
+.mv-event-container {
+  height: 120px !important;
+}
