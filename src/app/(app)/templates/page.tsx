@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ComponentType } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { PageHeader } from "@/components/page-header";
@@ -44,28 +44,33 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-    PlusCircle, Search, Save, Trash2, Loader2, Download, LucideProps, File, MoreVertical, Edit, Palette, HandPlatter, Building, MessageSquareHeart, GripVertical
+    LucideProps,
+    PlusCircle, Search, Save, Trash2, Download, File, MoreVertical, Edit, Palette, HandPlatter, Building, MessageSquareHeart, GripVertical, FileText, CheckSquare
 } from "lucide-react";
-import * as LucideIcons from "lucide-react";
-// Removed top-level PDF imports to prevent build errors
-
-const iconMap: { [key: string]: React.ComponentType<LucideProps> } = LucideIcons;
 
 // --- TYPE DEFINITIONS ---
+const availableIcons = ["File", "Palette", "Building", "MessageSquareHeart", "HandPlatter", "FileText", "CheckSquare"] as const;
+type IconName = typeof availableIcons[number];
+
+const iconMap: Record<IconName, ComponentType<LucideProps>> = {
+    File, Palette, Building, MessageSquareHeart, HandPlatter, FileText, CheckSquare
+};
+
+
 type FieldType = "text" | "textarea" | "email" | "number" | "file" | "checkbox" | "date" | "select" | "richtext";
 
 type TemplateField = {
-  id: string; // Unique ID for React keys
+  id: string;
   label: string;
   type: FieldType;
-  options?: string[]; // For 'select' type
+  options?: string[];
 };
 
 type Template = {
   id: string;
   title: string;
   description: string;
-  icon: keyof typeof LucideIcons;
+  icon: IconName;
   tags: string[];
   fields: TemplateField[];
 };
@@ -120,7 +125,7 @@ const TemplateCard = ({ template, onUse, onEdit, onDelete }: { template: Templat
 const TemplateEditorDialog = ({ isOpen, onOpenChange, onSave, initialData }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onSave: (data: Omit<Template, 'id'>) => void, initialData?: Template | null }) => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [icon, setIcon] = useState<keyof typeof LucideIcons>("File");
+    const [icon, setIcon] = useState<IconName>("File");
     const [tags, setTags] = useState("");
     const [fields, setFields] = useState<TemplateField[]>([]);
 
@@ -157,8 +162,6 @@ const TemplateEditorDialog = ({ isOpen, onOpenChange, onSave, initialData }: { i
         onOpenChange(false);
     }
     
-    const iconList = ["File", "Palette", "Building", "MessageSquareHeart", "HandPlatter", "FileText", "CheckSquare"] as const;
-
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
@@ -172,9 +175,9 @@ const TemplateEditorDialog = ({ isOpen, onOpenChange, onSave, initialData }: { i
                     <Textarea placeholder="Template Description" value={description} onChange={e => setDescription(e.target.value)} />
                     <div className="flex gap-4">
                         <Input placeholder="Tags (comma-separated)" value={tags} onChange={e => setTags(e.target.value)} className="flex-grow"/>
-                        <Select value={icon} onValueChange={(val) => setIcon(val as keyof typeof LucideIcons)}>
+                        <Select value={icon} onValueChange={(val) => setIcon(val as IconName)}>
                             <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
-                            <SelectContent>{iconList.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
+                            <SelectContent>{availableIcons.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
 
@@ -233,12 +236,10 @@ const UseTemplateDialog = ({ isOpen, onOpenChange, template }: { isOpen: boolean
     if (!template) return null;
 
     const handleExportPdf = async () => {
-        // Dynamically import PDF libraries on demand (client-side only)
         const { default: jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');
 
         const doc = new jsPDF();
-        
         doc.setFontSize(18);
         doc.text(template.title, 14, 22);
         doc.setFontSize(11);
@@ -254,7 +255,6 @@ const UseTemplateDialog = ({ isOpen, onOpenChange, template }: { isOpen: boolean
             theme: 'striped',
             headStyles: { fillColor: [52, 73, 94] }
         });
-
         doc.save(`${template.title.replace(/\s+/g, '_')}_export.pdf`);
     };
     
@@ -273,7 +273,7 @@ const UseTemplateDialog = ({ isOpen, onOpenChange, template }: { isOpen: boolean
                             <Label htmlFor={`field-${field.id}`}>{field.label}</Label>
                             { field.type === 'textarea' ? <Textarea id={`field-${field.id}`} value={formData[field.label] || ''} onChange={e => handleInputChange(field.label, e.target.value)} />
                             : field.type === 'checkbox' ? <div className="flex items-center gap-2 pt-2"><Checkbox id={`field-${field.id}`} checked={!!formData[field.label]} onCheckedChange={checked => handleInputChange(field.label, checked)} /></div>
-                            : field.type === 'select' ? <Select onValueChange={val => handleInputChange(field.label, val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{field.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select>
+                            : field.type === 'select' ? <Select value={formData[field.label] || ''} onValueChange={val => handleInputChange(field.label, val)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{field.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select>
                             : <Input type={field.type} id={`field-${field.id}`} value={formData[field.label] || ''} onChange={e => handleInputChange(field.label, e.target.value)} />
                             }
                         </div>
@@ -315,15 +315,15 @@ export default function TemplatesPage() {
             toast({ variant: "destructive", title: "Error", description: "Could not fetch templates." });
             setIsLoading(false);
         });
-        return () => unsubscribe(); // Cleanup listener on unmount
+        return () => unsubscribe();
     }, []);
 
     const handleSaveTemplate = async (data: Omit<Template, 'id'>) => {
         try {
-            if (selectedTemplate) { // Edit mode
+            if (selectedTemplate) {
                 await updateDoc(doc(db, "templates", selectedTemplate.id), data);
                 toast({ title: "Template Updated!", description: `'${data.title}' has been saved.`});
-            } else { // Create mode
+            } else {
                 await addDoc(collection(db, "templates"), data);
                 toast({ title: "Template Created!", description: `'${data.title}' has been saved.`});
             }
