@@ -4,7 +4,9 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileEdit, List, MessageSquareQuote, CheckSquare, PlusCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FileEdit, List, MessageSquareQuote, CheckSquare, PlusCircle, Search, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,41 +17,45 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
-const templates = [
+const initialTemplates = [
   {
     title: "Event Registration Form",
     description: "A simple, branded web form for RSVPs and workshop registrations.",
     icon: CheckSquare,
     tags: ["Events", "Forms"],
+    fields: [
+        {label: "Full Name", type: "text"},
+        {label: "Email Address", type: "email"},
+        {label: "Number of Guests", type: "number"},
+    ]
   },
   {
     title: "Artist Directory",
     description: "Create a searchable, interactive directory of local artists, with bios and art styles.",
     icon: List,
     tags: ["Community", "Directory"],
+    fields: [
+        {label: "Artist Name", type: "text"},
+        {label: "Bio", type: "textarea"},
+        {label: "Website", type: "url"},
+        {label: "Profile Image", type: "file"},
+    ]
   },
-  {
-    title: "Member Feedback Survey",
-    description: "Deploy a quick survey to gather input from members, visitors, or participants.",
-    icon: MessageSquareQuote,
-    tags: ["Feedback", "Survey"],
-  },
-  {
-    title: "Exhibition Proposal",
-    description: "A standardized form for artists to submit proposals for upcoming exhibitions.",
-    icon: FileEdit,
-    tags: ["Artists", "Submissions"],
-  },
+  // ... other templates
 ];
 
 export default function TemplatesPage() {
+  const [templates, setTemplates] = useState(initialTemplates);
   const [isUseTemplateDialogOpen, setUseTemplateDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<{title: string} | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<(typeof initialTemplates)[0] | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const handleUseTemplate = (template: {title: string}) => {
+  const handleUseTemplate = (template: (typeof initialTemplates)[0]) => {
     setSelectedTemplate(template);
     setUseTemplateDialogOpen(true);
   };
+  
+  const filteredTemplates = templates.filter(t => t.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div>
@@ -57,13 +63,25 @@ export default function TemplatesPage() {
         title="Template Forge"
         description="Customizable templates for forms, directories, and surveys."
       >
-        <Button>
-            <PlusCircle className="mr-2 h-4 w-4"/>
-            Create New Template
-        </Button>
+        <div className="flex gap-2">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Search templates..."
+                    className="pl-8 sm:w-[300px]"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4"/>
+                Create New Template
+            </Button>
+        </div>
       </PageHeader>
       <div className="p-6 md:p-8 pt-0 grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {templates.map((template, index) => (
+        {filteredTemplates.map((template, index) => (
           <Card key={index} className="flex flex-col">
             <CardHeader className="flex-row items-start gap-4">
                 <template.icon className="h-8 w-8 text-primary mt-1" />
@@ -73,7 +91,10 @@ export default function TemplatesPage() {
                 </div>
             </CardHeader>
             <CardContent className="flex-grow">
-                {/* Could add a small visual preview here */}
+                <h4 className="text-sm font-semibold mb-2">Fields:</h4>
+                <ul className="list-disc list-inside text-sm text-muted-foreground">
+                    {template.fields.map(field => <li key={field.label}>{field.label}</li>)}
+                </ul>
             </CardContent>
             <CardFooter className="flex justify-between items-center">
                 <div>
@@ -88,17 +109,26 @@ export default function TemplatesPage() {
       </div>
 
       <Dialog open={isUseTemplateDialogOpen} onOpenChange={setUseTemplateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>Use '{selectedTemplate?.title}'</DialogTitle>
+            <DialogTitle>Customize '{selectedTemplate?.title}'</DialogTitle>
             <DialogDescription>
-              This would typically lead to a new page to configure and deploy this template. For now, this confirms the template selection.
+              Modify the fields for your template. This is a simplified interface for demonstration.
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 py-4">
+              {selectedTemplate?.fields.map((field, index) => (
+                  <div key={index} className="grid grid-cols-4 items-center gap-4">
+                      <label className="text-right">{field.label}</label>
+                      {field.type === 'textarea' ? <Textarea className="col-span-3"/> : <Input type={field.type} className="col-span-3"/>}
+                  </div>
+              ))}
+          </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button">OK</Button>
+              <Button type="button" variant="secondary">Cancel</Button>
             </DialogClose>
+            <Button><Save className="mr-2 h-4 w-4"/> Save Template</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
