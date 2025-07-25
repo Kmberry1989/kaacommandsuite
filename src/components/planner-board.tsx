@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc } from "firebase/firestore"
-import Draggable from "react-draggable"
+import Draggable, { DraggableData, DraggableEvent } from "react-draggable"
 import { useMobile } from "@/hooks/use-mobile"
 
 import { Button } from "@/components/ui/button"
@@ -60,6 +60,46 @@ type ToDoItem = {
   status: "Not Started" | "Working" | "Completed"
   dueDate: string | null
 }
+
+// Draggable Sticky Note Component
+const DraggableStickyNote = ({ note, onDragStop, onTextChange, onDelete }: {
+    note: StickyNote,
+    onDragStop: (e: DraggableEvent, data: DraggableData, noteId: string) => void,
+    onTextChange: (id: string, text: string) => void,
+    onDelete: (id: string) => void
+}) => {
+  const nodeRef = React.useRef(null);
+  return (
+    <Draggable
+      nodeRef={nodeRef}
+      handle=".handle"
+      position={note.position}
+      onStop={(e, data) => onDragStop(e, data, note.id)}
+      bounds="parent"
+    >
+      <div
+        ref={nodeRef}
+        className={`absolute w-48 rounded-md p-2 shadow-lg ${note.color}`}
+      >
+        <div className="handle h-6 w-full cursor-move" />
+        <Textarea
+          defaultValue={note.text}
+          onBlur={(e) => onTextChange(note.id, e.target.value)}
+          className="h-24 w-full resize-none border-none bg-transparent focus-visible:ring-0"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-0 right-0"
+          onClick={() => onDelete(note.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </Draggable>
+  );
+};
+
 
 export function PlannerBoard() {
   const isMobile = useMobile()
@@ -121,7 +161,6 @@ export function PlannerBoard() {
         if(workspaceRef.current) {
             canvas.width = workspaceRef.current.clientWidth
             canvas.height = workspaceRef.current.clientHeight
-             // Redraw saved content after resize
             const loadDrawing = async () => {
                 const drawingDoc = await getDoc(doc(db, "planner-drawing", "main"));
                 if (drawingDoc.exists()) {
@@ -235,7 +274,7 @@ export function PlannerBoard() {
     await addDoc(collection(db, 'planner-notes'), newNote);
   }
 
-  const handleNoteDragStop = async (e: any, data: any, noteId: string) => {
+  const handleNoteDragStop = async (e: DraggableEvent, data: DraggableData, noteId: string) => {
     const newPosition = { x: data.x, y: data.y };
     await setDoc(doc(db, "planner-notes", noteId), { position: newPosition }, { merge: true });
   }
@@ -273,8 +312,6 @@ export function PlannerBoard() {
     if (!b.dueDate) return -1
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
   })
-  
-  const nodeRef = useRef(null)
 
   return (
     <ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"} className="h-full max-h-[calc(100vh-10rem)] w-full rounded-lg border" autoSaveId="planner-layout">
@@ -315,36 +352,13 @@ export function PlannerBoard() {
           <div ref={workspaceRef} className="relative flex-grow bg-white overflow-hidden">
             <canvas ref={canvasRef} className="absolute inset-0" />
             {stickyNotes.map((note) => (
-               <Draggable
+              <DraggableStickyNote 
                 key={note.id}
-                handle=".handle"
-                position={note.position}
-                onStop={(e, data) => {
-                  handleNoteDragStop(e, data, note.id);
-                }}
-                bounds="parent"
-                nodeRef={nodeRef}
-              >
-                <div
-                  ref={nodeRef}
-                  className={`absolute w-48 rounded-md p-2 shadow-lg ${note.color}`}
-                >
-                  <div className="handle h-6 w-full cursor-move" />
-                  <Textarea
-                    defaultValue={note.text}
-                    onBlur={(e) => updateStickyNoteText(note.id, e.target.value)}
-                    className="h-24 w-full resize-none border-none bg-transparent focus-visible:ring-0"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-0 right-0"
-                    onClick={() => deleteStickyNote(note.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Draggable>
+                note={note}
+                onDragStop={handleNoteDragStop}
+                onTextChange={updateStickyNoteText}
+                onDelete={deleteStickyNote}
+              />
             ))}
           </div>
           <div className="flex shrink-0 flex-col md:flex-row gap-4 border-t bg-background p-4">
