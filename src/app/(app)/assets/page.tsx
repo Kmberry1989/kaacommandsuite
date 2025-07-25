@@ -116,7 +116,8 @@ export default function AssetsPage() {
           const visualizationsSnap = await getDocs(collection(db, "visualizations"));
   
           const allAssets: Asset[] = [
-            ...imagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImageAsset)),
+            // FIX: Explicitly set type: 'Image' to prevent undefined errors
+            ...imagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Image' } as ImageAsset)),
             ...documentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Document' } as DocumentAsset)),
             ...visualizationsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Chart' } as VisualizationAsset)),
           ];
