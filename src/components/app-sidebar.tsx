@@ -82,16 +82,6 @@ export default function AppSidebar() {
                   </SidebarMenuButton>
               </SidebarMenuItem>
           </SidebarMenu>
-          <div className="flex items-center gap-3 p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:py-2">
-              <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="User" data-ai-hint="person face"/>
-                  <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                  <span className="text-sm font-semibold">Gallery Manager</span>
-                  <span className="text-xs text-muted-foreground">manager@kokomoart.org</span>
-              </div>
-          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
