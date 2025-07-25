@@ -319,7 +319,9 @@ export function PlannerBoard() {
                 key={note.id}
                 handle=".handle"
                 position={note.position}
-                onStop={(e, data) => handleNoteDragStop(e, data, note.id)}
+                onStop={(e, data) => {
+                  handleNoteDragStop(e, data, note.id);
+                }}
                 bounds="parent"
                 nodeRef={nodeRef}
               >
