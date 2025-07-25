@@ -45,7 +45,7 @@ export default function AppSidebar() {
                 <Palette className="h-6 w-6 text-primary" />
             </Button>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <h1 className="font-headline text-lg font-semibold tracking-tight">Art Hub Kokomo</h1>
+                <h1 className="font-headline text-lg font-semibold tracking-tight">KAA Media Command Suite</h1>
             </div>
         </div>
       </SidebarHeader>
