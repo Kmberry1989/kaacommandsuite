@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import AppSidebar from "@/components/app-sidebar"
+import { AppSidebar } from "@/components/app-sidebar" // <-- Use named import
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu } from "lucide-react"
-import { SidebarProvider } from "@/components/ui/sidebar" // <-- Import the provider
+import { SidebarProvider } from "@/components/ui/sidebar"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <SidebarProvider> {/* <-- Wrap the entire layout */}
+    <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <div className="hidden md:flex">
           <AppSidebar />
