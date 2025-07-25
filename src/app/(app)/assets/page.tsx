@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -26,21 +28,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const initialAssets = {
-  images: [
-    { name: "Spring Gala Banner", type: "Image", date: "2024-05-15", src: "https://placehold.co/600x400.png", dataAiHint: "art gallery event" },
-    { name: "Artist Spotlight Headshot", type: "Image", date: "2024-05-12", src: "https://placehold.co/600x400.png", dataAiHint: "artist portrait" },
-    { name: "Workshop Materials Photo", type: "Image", date: "2024-05-10", src: "https://placehold.co/600x400.png", dataAiHint: "art supplies" },
-  ],
-  documents: [
-    { name: "Q2 Impact Report.pdf", type: "Document", date: "2024-06-01", icon: FileText },
-    { name: "Grant Application Draft.docx", type: "Document", date: "2024-05-28", icon: FileText },
-    { name: "Press Release - Spring Gala.docx", type: "Document", date: "2024-05-14", icon: FileText },
-  ],
-  visualizations: [
-    { name: "Membership Growth Chart", type: "Chart", date: "2024-06-02", icon: BarChart2 },
-    { name: "Social Media Infographic", type: "Chart", date: "2024-05-20", icon: BarChart2 },
-  ],
+type ImageAsset = {
+  name: string;
+  type: "Image";
+  date: string;
+  src: string;
+  dataAiHint?: string;
+};
+
+type DocumentAsset = {
+  name: string;
+  type: "Document";
+  date: string;
+  icon: typeof FileText;
+};
+
+type VisualizationAsset = {
+  name: string;
+  type: "Chart";
+  date: string;
+  icon: typeof BarChart2;
+};
+
+type Assets = {
+  images: ImageAsset[];
+  documents: DocumentAsset[];
+  visualizations: VisualizationAsset[];
+};
+
+const iconMap = {
+  FileText,
+  BarChart2,
+};
+
+const initialAssets: Assets = {
+  images: [],
+  documents: [],
+  visualizations: [],
 };
 
 const AssetCard = ({ asset }: { asset: any }) => (
@@ -76,10 +100,62 @@ const AssetCard = ({ asset }: { asset: any }) => (
 );
 
 
-export default function AssetsPage() {
-  const [assets, setAssets] = useState(initialAssets);
+  const [assets, setAssets] = useState<Assets>(initialAssets);
   const [isUploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [newAsset, setNewAsset] = useState({ name: "", type: "Image" });
+  const [analytics, setAnalytics] = useState<any>(null);
+  // Fetch Google Analytics data
+  useEffect(() => {
+    fetch("/api/analytics")
+      .then(res => res.json())
+      .then(data => setAnalytics(data))
+      .catch(err => console.error("Failed to fetch analytics:", err));
+  }, []);
+
+  // Fetch assets from Firebase Firestore
+  useEffect(() => {
+    async function fetchAssets() {
+      try {
+        const imagesSnap = await getDocs(collection(db, "images"));
+        const documentsSnap = await getDocs(collection(db, "documents"));
+        const visualizationsSnap = await getDocs(collection(db, "visualizations"));
+
+        const images: ImageAsset[] = imagesSnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            name: data.name || "Untitled Image",
+            type: "Image",
+            date: data.date || new Date().toISOString().split('T')[0],
+            src: data.src || "https://placehold.co/600x400.png",
+            dataAiHint: data.dataAiHint || "",
+          };
+        });
+        const documents: DocumentAsset[] = documentsSnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            name: data.name || "Untitled Document",
+            type: "Document",
+            date: data.date || new Date().toISOString().split('T')[0],
+            icon: FileText,
+          };
+        });
+        const visualizations: VisualizationAsset[] = visualizationsSnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            name: data.name || "Untitled Chart",
+            type: "Chart",
+            date: data.date || new Date().toISOString().split('T')[0],
+            icon: BarChart2,
+          };
+        });
+
+        setAssets({ images, documents, visualizations });
+      } catch (err) {
+        console.error("Failed to fetch assets from Firebase:", err);
+      }
+    }
+    fetchAssets();
+  }, []);
 
   const handleAddAsset = () => {
     const newAssetData = {
@@ -90,16 +166,13 @@ export default function AssetsPage() {
       ...(newAsset.type === 'Document' && { icon: FileText }),
       ...(newAsset.type === 'Chart' && { icon: BarChart2 }),
     };
-
     const assetCategory = `${newAsset.type.toLowerCase()}s` as keyof typeof assets;
-    // @ts-ignore
     setAssets(prev => ({...prev, [assetCategory]: [...prev[assetCategory], newAssetData]}));
     setUploadDialogOpen(false);
     setNewAsset({ name: "", type: "Image" });
-  }
+  };
 
   const allAssets = [...assets.images, ...assets.documents, ...assets.visualizations].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
 
   return (
     <div>
@@ -112,6 +185,15 @@ export default function AssetsPage() {
           Upload Asset
         </Button>
       </PageHeader>
+      {/* Google Analytics Section */}
+      <div className="mb-6 p-4 bg-muted rounded-lg">
+        <h2 className="text-lg font-bold mb-2">Google Analytics</h2>
+        {analytics ? (
+          <div>Active Users: {analytics.rows?.[0]?.metricValues?.[0]?.value ?? "N/A"}</div>
+        ) : (
+          <div>Loading analytics...</div>
+        )}
+      </div>
       <div className="p-6 md:p-8 pt-0">
         <Tabs defaultValue="all" className="w-full">
           <TabsList>
