@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
-  SidebarContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
+  ClipboardCheck,
   FileText,
   Lightbulb,
   ImageIcon,
@@ -20,9 +21,10 @@ import {
   Palette,
   Settings,
   CircleHelp,
-  ClipboardCheck,
+  ChevronsLeft,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/planner", icon: ClipboardCheck, label: "Planner" },
@@ -33,56 +35,57 @@ const navItems = [
   { href: "/assets", icon: Folder, label: "Asset Command" },
 ];
 
-export function AppSidebar() { // Changed to a named export
+export function AppSidebar() {
   const pathname = usePathname();
+  const { isCollapsed, toggleCollapse } = useSidebar();
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="shrink-0">
-                <Palette className="h-6 w-6 text-primary" />
-            </Button>
-            <div className="flex flex-col">
-                <h1 className="font-headline text-lg font-semibold tracking-tight">KAA Media Command Suite</h1>
+    <div className={cn("transition-all duration-300 ease-in-out", isCollapsed ? "w-16" : "w-64")}>
+        <div className="p-4 flex items-center justify-between">
+            <div className={cn("flex items-center gap-2", isCollapsed && "justify-center w-full")}>
+                <Palette className="h-6 w-6 text-primary shrink-0" />
+                <h1 className={cn("font-headline text-lg font-semibold tracking-tight whitespace-nowrap", isCollapsed && "hidden")}>
+                    KAA Media Command
+                </h1>
             </div>
+            {!isCollapsed && (
+                <Button variant="ghost" size="icon" onClick={toggleCollapse}>
+                    <ChevronsLeft />
+                </Button>
+            )}
         </div>
-      </SidebarHeader>
-      <SidebarContent className="p-2">
-        <SidebarMenu>
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <Link href={item.href}>
-                <SidebarMenuButton
-                  isActive={pathname?.startsWith(item.href)}
-                  tooltip={{ children: item.label }}
-                >
-                  <item.icon />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
+      <SidebarMenu>
+        {navItems.map((item) => (
+          <SidebarMenuItem key={item.href}>
+            <Link href={item.href}>
+              <SidebarMenuButton
+                isActive={pathname?.startsWith(item.href)}
+              >
+                <item.icon className="shrink-0"/>
+                <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>{item.label}</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
       <SidebarFooter>
         <div className="flex flex-col gap-2">
           <SidebarMenu>
               <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={{children: "Help"}}>
-                      <CircleHelp />
-                      <span>Help</span>
+                  <SidebarMenuButton>
+                      <CircleHelp className="shrink-0"/>
+                      <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>Help</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={{children: "Settings"}}>
-                      <Settings />
-                      <span>Settings</span>
+                  <SidebarMenuButton>
+                      <Settings className="shrink-0"/>
+                      <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>Settings</span>
                   </SidebarMenuButton>
               </SidebarMenuItem>
           </SidebarMenu>
         </div>
       </SidebarFooter>
-    </Sidebar>
+    </div>
   );
 }
