@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, storage } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, doc, deleteDoc } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import {
-  Download, Share2, Folder, Image as ImageIcon, FileText, BarChart2, PlusCircle, Trash2, MoreVertical, Edit
-} from "lucide-react";
+import { Download, Share2, Folder, Image as ImageIcon, FileText, BarChart2, PlusCircle, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
 import {
   Dialog,
@@ -22,17 +19,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,8 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
-// --- TYPE DEFINITIONS ---
 type AssetType = "Image" | "Document" | "Chart";
 
 type BaseAsset = {
@@ -52,154 +38,184 @@ type BaseAsset = {
   name: string;
   type: AssetType;
   date: string;
-  filePath: string; // Path in Firebase Storage
-  downloadURL: string;
+  storagePath?: string;
 };
 
-type ImageAsset = BaseAsset & { type: "Image" };
-type DocumentAsset = BaseAsset & { type: "Document", icon: typeof FileText };
-type ChartAsset = BaseAsset & { type: "Chart", icon: typeof BarChart2 };
+type ImageAsset = BaseAsset & {
+  type: "Image";
+  src: string;
+};
 
-type Asset = ImageAsset | DocumentAsset | ChartAsset;
+type DocumentAsset = BaseAsset & { type: "Document" };
+type VisualizationAsset = BaseAsset & { type: "Chart" };
 
-const AssetCard = ({ asset, onDelete }: { asset: Asset, onDelete: () => void }) => (
-  <Card className="overflow-hidden group">
-    <CardContent className="p-0 relative">
-      {asset.type === "Image" ? (
-        <Image
-          src={asset.downloadURL}
-          alt={asset.name}
-          width={400}
-          height={300}
-          className="aspect-[4/3] w-full object-cover"
-        />
-      ) : (
-        <div className="aspect-[4/3] w-full bg-secondary flex items-center justify-center">
-            <asset.icon className="h-16 w-16 text-muted-foreground" />
-        </div>
-      )}
-      <div className="absolute top-2 right-2">
-         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical className="h-4 w-4"/>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => window.open(asset.downloadURL, '_blank')}><Download className="mr-2 h-4 w-4"/>Download</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(asset.downloadURL)}><Share2 className="mr-2 h-4 w-4"/>Copy Link</DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-red-600"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardContent>
-    <CardFooter className="flex-col items-start p-4">
-        <p className="font-semibold truncate w-full">{asset.name}</p>
-        <p className="text-sm text-muted-foreground">
-            {new Date(asset.date).toLocaleDateString()}
-        </p>
-    </CardFooter>
-  </Card>
-);
+type Asset = ImageAsset | DocumentAsset | VisualizationAsset;
+
+// --- AssetCard Component (Moved outside and refactored) ---
+const AssetCard = ({ asset, onDelete }: { asset: Asset; onDelete: (asset: Asset) => void; }) => {
+  const getIcon = (type: AssetType) => {
+    switch (type) {
+      case "Document": return <FileText className="h-16 w-16 text-muted-foreground" />;
+      case "Chart": return <BarChart2 className="h-16 w-16 text-muted-foreground" />;
+      default: return null;
+    }
+  };
+
+  return (
+    <Card className="overflow-hidden flex flex-col">
+      <CardContent className="p-0">
+        {asset.type === "Image" ? (
+          <Image
+            src={asset.src}
+            alt={asset.name}
+            width={400}
+            height={300}
+            className="aspect-[4/3] w-full object-cover"
+            onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x300/e2e8f0/e2e8f0?text=Error'; }}
+          />
+        ) : (
+          <div className="aspect-[4/3] w-full bg-secondary flex items-center justify-center">
+            {getIcon(asset.type)}
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex-col items-start p-4 flex-grow">
+          <p className="font-semibold">{asset.name}</p>
+          <p className="text-sm text-muted-foreground mb-4">Uploaded: {asset.date}</p>
+          <div className="flex w-full justify-between items-center mt-auto">
+              <span className="text-xs py-1 px-2 rounded-full bg-secondary text-secondary-foreground">{asset.type}</span>
+              <div className="flex gap-1">
+                  <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(asset)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+          </div>
+      </CardFooter>
+    </Card>
+  );
+};
+
 
 export default function AssetsPage() {
     const [assets, setAssets] = useState<Asset[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isUploadDialogOpen, setUploadDialogOpen] = useState(false);
-    const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
-    
-    // Upload State
+    const [newAssetFile, setNewAssetFile] = useState<File | null>(null);
     const [newAssetName, setNewAssetName] = useState("");
     const [newAssetType, setNewAssetType] = useState<AssetType>("Image");
-    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
-    
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
+    async function fetchAssets() {
+        setIsLoading(true);
+        try {
+          const imagesSnap = await getDocs(collection(db, "images"));
+          const documentsSnap = await getDocs(collection(db, "documents"));
+          const visualizationsSnap = await getDocs(collection(db, "visualizations"));
+  
+          const allAssets: Asset[] = [
+            ...imagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImageAsset)),
+            ...documentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Document' } as DocumentAsset)),
+            ...visualizationsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Chart' } as VisualizationAsset)),
+          ];
+          
+          setAssets(allAssets.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        } catch (err) {
+          console.error("Failed to fetch assets from Firebase:", err);
+          toast({ variant: "destructive", title: "Error", description: "Could not fetch assets."});
+        } finally {
+            setIsLoading(false);
+        }
+      }
+  
     useEffect(() => {
-        const unsub = onSnapshot(collection(db, "assets"), (snapshot) => {
-            const allAssets = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as BaseAsset)
-              .map(asset => {
-                  if (asset.type === 'Document') return {...asset, icon: FileText};
-                  if (asset.type === 'Chart') return {...asset, icon: BarChart2};
-                  return asset;
-              }) as Asset[];
-            setAssets(allAssets.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        });
-        return () => unsub();
+      fetchAssets();
     }, []);
 
-    const handleUpload = async () => {
-        if (!fileToUpload || !newAssetName) {
-            toast({ variant: "destructive", title: "Missing Information", description: "Please provide a name and select a file."});
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setNewAssetFile(file);
+            setNewAssetName(file.name.split('.').slice(0, -1).join('.'));
+        }
+    };
+  
+    const handleUploadAsset = async () => {
+        if (!newAssetFile) {
+            toast({ variant: "destructive", title: "No file selected", description: "Please choose a file to upload." });
             return;
         }
-
         setIsUploading(true);
         setUploadProgress(0);
-        const fileExtension = fileToUpload.name.split('.').pop();
-        const filePath = `assets/${newAssetType.toLowerCase()}/${Date.now()}_${newAssetName.replace(/\s+/g, '_')}.${fileExtension}`;
-        const storageRef = ref(storage, filePath);
-        const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
-
-        uploadTask.on('state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress(progress);
-            },
-            (error) => {
-                console.error("Upload failed:", error);
-                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload the file. Please try again."});
-                setIsUploading(false);
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                await addDoc(collection(db, "assets"), {
-                    name: newAssetName,
-                    type: newAssetType,
-                    date: new Date().toISOString(),
-                    filePath,
-                    downloadURL
-                });
-
-                toast({ title: "Asset Uploaded!", description: `${newAssetName} is now in your library.` });
-                
-                // Reset state
-                setIsUploading(false);
-                setUploadDialogOpen(false);
-                setNewAssetName("");
-                setFileToUpload(null);
-                setUploadProgress(0);
-            }
-        );
-    };
-
-    const handleDelete = async () => {
-        if (!assetToDelete) return;
+        
+        const collectionName = `${newAssetType.toLowerCase()}s`;
+        const storagePath = `${collectionName}/${Date.now()}_${newAssetFile.name}`;
+        const storageRef = ref(storage, storagePath);
 
         try {
-            // Delete file from Firebase Storage
-            const fileRef = ref(storage, assetToDelete.filePath);
-            await deleteObject(fileRef);
+            // Simulate progress for now, replace with actual upload task later if needed
+            await new Promise(res => setTimeout(res, 500)); setUploadProgress(30);
+            const snapshot = await uploadBytes(storageRef, newAssetFile);
+            await new Promise(res => setTimeout(res, 500)); setUploadProgress(70);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            await new Promise(res => setTimeout(res, 500)); setUploadProgress(100);
 
-            // Delete document from Firestore
-            await deleteDoc(doc(db, "assets", assetToDelete.id));
+            const newAssetData: Omit<Asset, 'id'> = {
+                name: newAssetName || newAssetFile.name,
+                date: new Date().toISOString().split('T')[0],
+                type: newAssetType,
+                storagePath: storagePath,
+                ...(newAssetType === 'Image' && { src: downloadURL }),
+            };
+    
+            await addDoc(collection(db, collectionName), newAssetData);
             
-            toast({ title: "Asset Deleted", description: `'${assetToDelete.name}' has been removed.`});
+            toast({ title: "Asset Uploaded", description: `${newAssetData.name} has been added.`});
+            fetchAssets(); // Refresh assets
+            setUploadDialogOpen(false);
+            
         } catch (error) {
-             console.error("Error deleting asset:", error);
-             toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete the asset. It may have already been removed." });
+            console.error("Error uploading asset:", error);
+            toast({ variant: "destructive", title: "Upload Error", description: "Could not upload the asset."});
+        } finally {
+            setIsUploading(false);
+            setNewAssetFile(null);
+            setNewAssetName("");
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleDeleteAsset = async () => {
+        if (!assetToDelete) return;
+
+        const collectionName = `${assetToDelete.type.toLowerCase()}s`;
+        
+        try {
+            // Delete from Firestore
+            await deleteDoc(doc(db, collectionName, assetToDelete.id));
+
+            // Delete from Storage if path exists
+            if (assetToDelete.storagePath) {
+                const storageRef = ref(storage, assetToDelete.storagePath);
+                await deleteObject(storageRef);
+            }
+            
+            toast({ title: "Asset Deleted", description: `${assetToDelete.name} has been removed.`});
+            fetchAssets();
+        } catch (error) {
+            console.error("Error deleting asset:", error);
+            toast({ variant: "destructive", title: "Deletion Error", description: "Could not delete the asset."});
         } finally {
             setAssetToDelete(null);
-            setDeleteDialogOpen(false);
         }
-    }
-
-    const triggerDeleteDialog = (asset: Asset) => {
-        setAssetToDelete(asset);
-        setDeleteDialogOpen(true);
     };
+  
+    const allAssets = assets;
+    const imageAssets = assets.filter(a => a.type === 'Image');
+    const documentAssets = assets.filter(a => a.type === 'Document');
+    const visualizationAssets = assets.filter(a => a.type === 'Chart');
   
     return (
       <div>
@@ -216,22 +232,22 @@ export default function AssetsPage() {
           <Tabs defaultValue="all" className="w-full">
             <TabsList>
               <TabsTrigger value="all"><Folder className="mr-2 h-4 w-4"/> All</TabsTrigger>
-              <TabsTrigger value="Image"><ImageIcon className="mr-2 h-4 w-4"/> Images</TabsTrigger>
-              <TabsTrigger value="Document"><FileText className="mr-2 h-4 w-4"/> Documents</TabsTrigger>
-              <TabsTrigger value="Chart"><BarChart2 className="mr-2 h-4 w-4"/> Charts</TabsTrigger>
+              <TabsTrigger value="images"><ImageIcon className="mr-2 h-4 w-4"/> Images</TabsTrigger>
+              <TabsTrigger value="documents"><FileText className="mr-2 h-4 w-4"/> Documents</TabsTrigger>
+              <TabsTrigger value="visualizations"><BarChart2 className="mr-2 h-4 w-4"/> Charts</TabsTrigger>
             </TabsList>
             
             <TabsContent value="all" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {assets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={() => triggerDeleteDialog(asset)} />)}
+               {allAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
             </TabsContent>
-            <TabsContent value="Image" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {assets.filter(a => a.type === 'Image').map(asset => <AssetCard key={asset.id} asset={asset} onDelete={() => triggerDeleteDialog(asset)} />)}
+            <TabsContent value="images" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+               {imageAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
             </TabsContent>
-            <TabsContent value="Document" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {assets.filter(a => a.type === 'Document').map(asset => <AssetCard key={asset.id} asset={asset} onDelete={() => triggerDeleteDialog(asset)} />)}
+            <TabsContent value="documents" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+               {documentAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
             </TabsContent>
-            <TabsContent value="Chart" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {assets.filter(a => a.type === 'Chart').map(asset => <AssetCard key={asset.id} asset={asset} onDelete={() => triggerDeleteDialog(asset)} />)}
+            <TabsContent value="visualizations" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+               {visualizationAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
             </TabsContent>
           </Tabs>
         </div>
@@ -240,9 +256,15 @@ export default function AssetsPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Upload New Asset</DialogTitle>
-              <DialogDescription>Add a new file to your asset library.</DialogDescription>
+              <DialogDescription>
+                Add a new image, document, or chart to your asset library.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="asset-file" className="text-right">File</Label>
+                <Input id="asset-file" type="file" ref={fileInputRef} onChange={handleFileSelect} className="col-span-3"/>
+            </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="asset-name" className="text-right">Name</Label>
                 <Input id="asset-name" value={newAssetName} onChange={(e) => setNewAssetName(e.target.value)} className="col-span-3" placeholder="e.g., Summer Workshop Flyer"/>
@@ -250,35 +272,41 @@ export default function AssetsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="asset-type" className="text-right">Type</Label>
                  <Select value={newAssetType} onValueChange={(value) => setNewAssetType(value as AssetType)}>
-                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select asset type" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Image">Image</SelectItem>
                       <SelectItem value="Document">Document</SelectItem>
-                      <SelectItem value="Chart">Chart/Visualization</SelectItem>
+                      <SelectItem value="Chart">Chart</SelectItem>
                     </SelectContent>
                   </Select>
               </div>
-               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="asset-file" className="text-right">File</Label>
-                <Input id="asset-file" type="file" onChange={(e) => setFileToUpload(e.target.files ? e.target.files[0] : null)} className="col-span-3"/>
-              </div>
-              {isUploading && <Progress value={uploadProgress} className="col-span-4"/>}
+              {isUploading && <Progress value={uploadProgress} className="col-span-4" />}
             </div>
             <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="secondary" disabled={isUploading}>Cancel</Button></DialogClose>
-              <Button onClick={handleUpload} disabled={isUploading || !fileToUpload || !newAssetName}>
-                  {isUploading ? "Uploading..." : "Upload & Save"}
+              <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
+              <Button onClick={handleUploadAsset} disabled={!newAssetFile || isUploading}>
+                {isUploading ? "Uploading..." : "Upload Asset"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the asset '{assetToDelete?.name}' from your library and storage. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction></AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <Dialog open={!!assetToDelete} onOpenChange={() => setAssetToDelete(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Are you sure?</DialogTitle>
+                    <DialogDescription>
+                        This will permanently delete the asset "{assetToDelete?.name}". This action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setAssetToDelete(null)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleDeleteAsset}>Delete</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </div>
     );
 }
