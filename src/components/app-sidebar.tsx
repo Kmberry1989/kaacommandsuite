@@ -17,11 +17,11 @@ import {
   Lightbulb,
   ImageIcon,
   FilePlus2,
-  Folder,
   Palette,
   Settings,
   CircleHelp,
   ChevronsLeft,
+  DraftingCompass, // New Icon
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ const navItems = [
   { href: "/insights", icon: Lightbulb, label: "Insight Extractor" },
   { href: "/visualizer", icon: ImageIcon, label: "Artful Images" },
   { href: "/templates", icon: FilePlus2, label: "Template Forge" },
-  { href: "/assets", icon: Folder, label: "Asset Command" },
+  { href: "/critic-construct", icon: DraftingCompass, label: "Critic Construct" }, // Changed
 ];
 
 export function AppSidebar() {

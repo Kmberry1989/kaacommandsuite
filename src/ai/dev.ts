@@ -1,6 +1,15 @@
-import { config } from 'dotenv';
-config();
+/**
+ * @fileoverview This file exports all of the AI flows that are used in the
+ * application.
+ */
+import { generateSocialMediaContent } from "./flows/generate-social-media-content";
+import { generateCustomArtImages } from "./flows/generate-custom-art-images";
+import { extractInsightsFromCommunityData } from "./flows/extract-insights-from-community-data";
+import { critiquePost } from "./flows/critique-post";
 
-import '@/ai/flows/extract-insights-from-community-data.ts';
-import '@/ai/flows/generate-social-media-content.ts';
-import '@/ai/flows/generate-custom-art-images.ts';
+export const flows = {
+  generateSocialMediaContent,
+  generateCustomArtImages,
+  extractInsightsFromCommunityData,
+  critiquePost, // Added the new flow
+};
