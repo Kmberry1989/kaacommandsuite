@@ -39,6 +39,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   PlusCircle,
   Trash2,
   Brush,
@@ -271,7 +277,6 @@ export function PlannerBoard() {
       canvas.height = parent.clientHeight;
     }
     
-    // Fetch and draw saved lines
     const fetchDrawing = async () => {
         const drawingDoc = await getDoc(doc(db, "drawings", "workspace"));
         if (drawingDoc.exists()) {
@@ -314,7 +319,7 @@ export function PlannerBoard() {
   const handleMouseUp = () => {
     setIsDrawing(false);
     if(timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(saveDrawing, 1000); // Debounce saving
+    timeoutRef.current = setTimeout(saveDrawing, 1000);
   };
   
   const clearDrawing = async () => {
@@ -393,166 +398,181 @@ export function PlannerBoard() {
       }
   }
 
-  const deleteFile = async (id: string) => {
-      await deleteDoc(doc(db, "embeddedFiles", id));
+  const deleteFile = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await deleteDoc(doc(db, "embeddedFiles", id));
   }
-
-  // Workspace Content
-  const workspaceContent = (
-    <div className="h-full w-full relative bg-white rounded-md shadow-inner overflow-hidden">
-        <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className="absolute top-0 left-0"
-        />
-        {stickyNotes.map((note) => (
-            <DraggableStickyNote
-            key={note.id}
-            note={note}
-            onStop={(e, data, id) => updateNotePosition(id, data.x, data.y)}
-            updateNoteText={updateNoteText}
-            deleteNote={deleteNote}
-            />
-        ))}
-    </div>
-  );
   
   // Main Render
   return (
-    <div className="p-6 md:p-8 pt-0">
-        <ResizablePanelGroup
-            direction={isMobile ? "vertical" : "horizontal"}
-            className="rounded-lg border"
-            autoSaveId="planner-layout"
-        >
+    <div className="h-full w-full">
+        <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-lg border">
             <ResizablePanel defaultSize={50}>
-            <div className="flex flex-col h-full items-center p-4 gap-4">
-                <Input
-                placeholder="Enter public Google Calendar URL"
-                value={calendarUrl}
-                onChange={(e) => setCalendarUrl(e.target.value)}
-                />
-                <iframe
-                src={calendarUrl}
-                style={{ borderWidth: 0 }}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                scrolling="no"
-                ></iframe>
-            </div>
+                <ResizablePanelGroup direction="vertical">
+                    <ResizablePanel defaultSize={60}>
+                        <div className="flex flex-col h-full items-center p-4 gap-4">
+                            <Input
+                            placeholder="Enter public Google Calendar URL"
+                            value={calendarUrl}
+                            onChange={(e) => setCalendarUrl(e.target.value)}
+                            />
+                            <iframe
+                            src={calendarUrl}
+                            style={{ borderWidth: 0 }}
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            scrolling="no"
+                            ></iframe>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={40}>
+                         <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle>Shared Resources</CardTitle>
+                                <CardDescription>Embed public files from Google Drive, etc.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex flex-col h-[calc(100%-80px)]">
+                                <div className="flex-grow overflow-y-auto">
+                                    {embeddedFiles.length > 0 ? (
+                                        <Tabs defaultValue={embeddedFiles[0].id} className="h-full flex flex-col">
+                                            <TabsList>
+                                                {embeddedFiles.map(file => (
+                                                    <TabsTrigger key={file.id} value={file.id} className="relative group">
+                                                        {file.title}
+                                                        <button onClick={(e) => deleteFile(file.id, e)} className="absolute top-0 right-0 p-0.5 bg-gray-200 rounded-full opacity-0 group-hover:opacity-100">
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </TabsTrigger>
+                                                ))}
+                                            </TabsList>
+                                            {embeddedFiles.map(file => (
+                                                <TabsContent key={file.id} value={file.id} className="flex-grow">
+                                                    <iframe src={file.url} width="100%" height="100%" frameBorder="0"></iframe>
+                                                </TabsContent>
+                                            ))}
+                                        </Tabs>
+                                    ) : (
+                                        <div className="text-center text-muted-foreground p-8">No files embedded yet.</div>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                    <Input value={newFileTitle} onChange={(e) => setNewFileTitle(e.target.value)} placeholder="File Title"/>
+                                    <Input value={newFileUrl} onChange={(e) => setNewFileUrl(e.target.value)} placeholder="Paste embed URL..."/>
+                                    <Button onClick={addFile}><FileIcon className="h-4 w-4"/></Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50}>
-            <div className="flex flex-col h-full p-4">
-                {/* Drawing Toolbar */}
-                <div className="flex items-center flex-wrap gap-2 mb-2 p-2 rounded-md bg-gray-100 border">
-                    <Button variant={tool === 'brush' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('brush')}><Brush className="h-4 w-4"/></Button>
-                    <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')}><Eraser className="h-4 w-4"/></Button>
-                    <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} className="h-9 w-9"/>
-                    <div className="flex items-center gap-1">
-                        {colorPalette.map((color) => (
-                            <button
-                                key={color}
-                                onClick={() => setBrushColor(color)}
-                                className={`w-6 h-6 rounded-full cursor-pointer border-2 ${brushColor.toLowerCase() === color.toLowerCase() ? 'border-blue-500' : 'border-gray-300'}`}
-                                style={{ backgroundColor: color }}
-                            />
-                        ))}
-                    </div>
-                    <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} />
-                    <Button variant="destructive" size="icon" onClick={clearDrawing}><Trash2 className="h-4 w-4"/></Button>
-                </div>
-                {workspaceContent}
-                <div className="flex gap-2 mt-4">
-                    {stickyNoteColors.map((color) => (
-                    <div
-                        key={color}
-                        onClick={() => addStickyNote(color)}
-                        className={`w-12 h-12 rounded-md cursor-pointer ${color} shadow-md`}
-                    />
-                    ))}
-                </div>
-            </div>
+                 <ResizablePanelGroup direction="vertical">
+                    <ResizablePanel defaultSize={75}>
+                        <div className="flex h-full p-4 gap-2">
+                             <div className="flex flex-col items-center gap-2 p-2 rounded-md bg-gray-100 border">
+                                <Button variant={tool === 'brush' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('brush')}><Brush className="h-4 w-4"/></Button>
+                                <Button variant={tool === 'eraser' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTool('eraser')}><Eraser className="h-4 w-4"/></Button>
+                                <input type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} className="h-9 w-9"/>
+                                <div className="flex flex-col items-center gap-1">
+                                    {colorPalette.map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => setBrushColor(color)}
+                                            className={`w-6 h-6 rounded-full cursor-pointer border-2 ${brushColor.toLowerCase() === color.toLowerCase() ? 'border-blue-500' : 'border-gray-300'}`}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                                <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-20 [writing-mode:vertical-lr]"/>
+                                <Button variant="destructive" size="icon" onClick={clearDrawing}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+
+                            <div className="flex-grow h-full relative">
+                                 <div className="h-full w-full relative bg-white rounded-md shadow-inner overflow-hidden">
+                                    <canvas
+                                        ref={canvasRef}
+                                        onMouseDown={handleMouseDown}
+                                        onMouseMove={handleMouseMove}
+                                        onMouseUp={handleMouseUp}
+                                        onMouseLeave={handleMouseUp}
+                                        className="absolute top-0 left-0"
+                                    />
+                                    {stickyNotes.map((note) => (
+                                        <DraggableStickyNote
+                                        key={note.id}
+                                        note={note}
+                                        onStop={(e, data, id) => updateNotePosition(id, data.x, data.y)}
+                                        updateNoteText={updateNoteText}
+                                        deleteNote={deleteNote}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="absolute bottom-2 left-2 flex gap-2">
+                                    {stickyNoteColors.map((color) => (
+                                        <div
+                                            key={color}
+                                            onClick={() => addStickyNote(color)}
+                                            className={`w-12 h-12 rounded-md cursor-pointer ${color} shadow-md`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </ResizablePanel>
+                     <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={25}>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle>To-Do List</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-col h-[calc(100%-80px)]">
+                                <div className="space-y-4 flex-grow overflow-y-auto">
+                                {todos.map((todo) => {
+                                    const isOverdue = new Date(todo.dueDate) < new Date() && !todo.checked;
+                                    return (
+                                        <div key={todo.id} className="flex items-center gap-4">
+                                            <Checkbox checked={todo.checked} onCheckedChange={(checked) => toggleTodo(todo.id, !!checked)}/>
+                                            <span className={`flex-grow ${todo.checked ? 'line-through text-muted-foreground' : ''}`}>{todo.text}</span>
+                                            <span className={`text-sm font-medium ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>{todo.dueDate}</span>
+                                            <Select value={todo.status} onValueChange={(value) => updateTodoStatus(todo.id, value as ToDoItem["status"])}>
+                                                <SelectTrigger className="w-[150px]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Not Started" className="text-red-600">Not Started</SelectItem>
+                                                    <SelectItem value="Working" className="text-yellow-600">Working</SelectItem>
+                                                    <SelectItem value="Completed" className="text-green-600">Completed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )
+                                })}
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                    <Input value={newTodoText} onChange={(e) => setNewTodoText(e.target.value)} placeholder="New to-do..."/>
+                                    <Input type="date" value={newTodoDueDate} onChange={(e) => setNewTodoDueDate(e.target.value)} />
+                                    <Select value={newTodoReminder} onValueChange={setNewTodoReminder}>
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="Reminder" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Reminder</SelectItem>
+                                            <SelectItem value="5m">5 mins before</SelectItem>
+                                            <SelectItem value="1h">1 hour before</SelectItem>
+                                            <SelectItem value="1d">1 day before</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button onClick={addTodo}><PlusCircle className="h-4 w-4"/></Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </ResizablePanel>
+                 </ResizablePanelGroup>
             </ResizablePanel>
         </ResizablePanelGroup>
-        
-        {/* To-Do List and Shared Resources */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>To-Do List</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {todos.map((todo) => {
-                        const isOverdue = new Date(todo.dueDate) < new Date() && !todo.checked;
-                        return (
-                            <div key={todo.id} className="flex items-center gap-4">
-                                <Checkbox checked={todo.checked} onCheckedChange={(checked) => toggleTodo(todo.id, !!checked)}/>
-                                <span className={`flex-grow ${todo.checked ? 'line-through text-muted-foreground' : ''}`}>{todo.text}</span>
-                                <span className={`text-sm font-medium ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>{todo.dueDate}</span>
-                                <Select value={todo.status} onValueChange={(value) => updateTodoStatus(todo.id, value as ToDoItem["status"])}>
-                                    <SelectTrigger className="w-[150px]">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Not Started" className="text-red-600">Not Started</SelectItem>
-                                        <SelectItem value="Working" className="text-yellow-600">Working</SelectItem>
-                                        <SelectItem value="Completed" className="text-green-600">Completed</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )
-                    })}
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-2 mt-4">
-                        <Input value={newTodoText} onChange={(e) => setNewTodoText(e.target.value)} placeholder="New to-do..."/>
-                        <Input type="date" value={newTodoDueDate} onChange={(e) => setNewTodoDueDate(e.target.value)} />
-                        <Select value={newTodoReminder} onValueChange={setNewTodoReminder}>
-                            <SelectTrigger className="w-full md:w-[180px]">
-                                <SelectValue placeholder="Reminder" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">No Reminder</SelectItem>
-                                <SelectItem value="5m">5 mins before</SelectItem>
-                                <SelectItem value="1h">1 hour before</SelectItem>
-                                <SelectItem value="1d">1 day before</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button onClick={addTodo}><PlusCircle className="h-4 w-4"/></Button>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Shared Resources</CardTitle>
-                    <CardDescription>Embed public files from Google Drive, Dropbox, etc.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                        {embeddedFiles.map(file => (
-                            <div key={file.id} className="border p-2 rounded-md">
-                                <div className="flex justify-between items-center mb-2">
-                                    <p className="font-semibold">{file.title}</p>
-                                    <Button variant="ghost" size="icon" onClick={() => deleteFile(file.id)}><X className="h-4 w-4"/></Button>
-                                </div>
-                                <iframe src={file.url} width="100%" height="300px" frameBorder="0"></iframe>
-                            </div>
-                        ))}
-                    </div>
-                     <div className="flex flex-col md:flex-row gap-2 mt-4">
-                        <Input value={newFileTitle} onChange={(e) => setNewFileTitle(e.target.value)} placeholder="File Title"/>
-                        <Input value={newFileUrl} onChange={(e) => setNewFileUrl(e.target.value)} placeholder="Paste embed URL here..."/>
-                        <Button onClick={addFile}><FileIcon className="h-4 w-4 mr-2"/>Embed File</Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
     </div>
   );
 }

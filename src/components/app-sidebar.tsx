@@ -1,91 +1,163 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { Button, ButtonProps } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Context for Sidebar state
+interface SidebarContextProps {
+  isCollapsed: boolean;
+  setCollapsed: (isCollapsed: boolean) => void;
+}
+
+const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
+
+export function useSidebar() {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error("useSidebar must be used within a SidebarProvider");
+  }
+  return context;
+}
+
+export function SidebarProvider({ children }: { children: ReactNode }) {
+  const [isCollapsed, setCollapsed] = useState(false);
+  return (
+    <SidebarContext.Provider value={{ isCollapsed, setCollapsed }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+// Sidebar Root Component
+const sidebarVariants = cva(
+  "h-full bg-background border-r flex flex-col transition-all duration-300 ease-in-out",
+  {
+    variants: {
+      isCollapsed: {
+        true: "w-16",
+        false: "w-64",
+      },
+    },
+    defaultVariants: {
+      isCollapsed: false,
+    },
+  }
+);
+
+const Sidebar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    const { isCollapsed } = useSidebar();
+    return (
+      <div
+        ref={ref}
+        className={cn(sidebarVariants({ isCollapsed }), className, "group")}
+        data-collapsible={isCollapsed ? "icon" : "full"}
+        {...props}
+      />
+    );
+  }
+);
+Sidebar.displayName = "Sidebar";
+
+// Sidebar Header
+const SidebarHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("p-4 flex items-center justify-between", className)}
+      {...props}
+    />
+  )
+);
+SidebarHeader.displayName = "SidebarHeader";
+
+// Sidebar Content
+const SidebarContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("flex-grow", className)} {...props} />
+  )
+);
+SidebarContent.displayName = "SidebarContent";
+
+// Sidebar Footer
+const SidebarFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("p-2 border-t mt-auto", className)}
+      {...props}
+    />
+  )
+);
+SidebarFooter.displayName = "SidebarFooter";
+
+// Sidebar Menu & Items
+const SidebarMenu = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
+  ({ className, ...props }, ref) => (
+    <ul ref={ref} className={cn("space-y-1", className)} {...props} />
+  )
+);
+SidebarMenu.displayName = "SidebarMenu";
+
+const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIElement>>(
+  ({ className, ...props }, ref) => (
+    <li ref={ref} className={cn("", className)} {...props} />
+  )
+);
+SidebarMenuItem.displayName = "SidebarMenuItem";
+
+interface SidebarMenuButtonProps extends ButtonProps {
+  isActive?: boolean;
+  tooltip?: string;
+}
+
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
+  ({ className, isActive, tooltip, children, ...props }, ref) => {
+    const { isCollapsed } = useSidebar();
+
+    const button = (
+      <Button
+        ref={ref}
+        variant={isActive ? "secondary" : "ghost"}
+        className={cn("w-full justify-start h-10", className)}
+        {...props}
+      >
+        {children}
+      </Button>
+    );
+
+    if (isCollapsed && tooltip) {
+      return (
+        <TooltipProvider>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            <TooltipContent side="right">
+              <p>{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return button;
+  }
+);
+SidebarMenuButton.displayName = "SidebarMenuButton";
+
+export {
   Sidebar,
   SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  ClipboardCheck,
-  FileText,
-  Lightbulb,
-  ImageIcon,
-  FilePlus2,
-  Palette,
-  Settings,
-  CircleHelp,
-  ChevronsLeft,
-  DraftingCompass, // New Icon
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { cn } from "@/lib/utils";
-
-const navItems = [
-  { href: "/planner", icon: ClipboardCheck, label: "Planner" },
-  { href: "/content", icon: FileText, label: "Content Alchemist" },
-  { href: "/insights", icon: Lightbulb, label: "Insight Extractor" },
-  { href: "/visualizer", icon: ImageIcon, label: "Artful Images" },
-  { href: "/templates", icon: FilePlus2, label: "Template Forge" },
-  { href: "/critic-construct", icon: DraftingCompass, label: "Critic Construct" }, // Changed
-];
-
-export function AppSidebar() {
-  const pathname = usePathname();
-  const { isCollapsed, toggleCollapse } = useSidebar();
-
-  return (
-    <div className={cn("transition-all duration-300 ease-in-out", isCollapsed ? "w-16" : "w-64")}>
-        <div className="p-4 flex items-center justify-between">
-            <div className={cn("flex items-center gap-2", isCollapsed && "justify-center w-full")}>
-                <Palette className="h-6 w-6 text-primary shrink-0" />
-                <h1 className={cn("font-headline text-lg font-semibold tracking-tight whitespace-nowrap", isCollapsed && "hidden")}>
-                    KAA Media Command
-                </h1>
-            </div>
-            {!isCollapsed && (
-                <Button variant="ghost" size="icon" onClick={toggleCollapse}>
-                    <ChevronsLeft />
-                </Button>
-            )}
-        </div>
-      <SidebarMenu>
-        {navItems.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <Link href={item.href}>
-              <SidebarMenuButton
-                isActive={pathname?.startsWith(item.href)}
-              >
-                <item.icon className="shrink-0"/>
-                <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>{item.label}</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-      <SidebarFooter>
-        <div className="flex flex-col gap-2">
-          <SidebarMenu>
-              <SidebarMenuItem>
-                  <SidebarMenuButton>
-                      <CircleHelp className="shrink-0"/>
-                      <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>Help</span>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                  <SidebarMenuButton>
-                      <Settings className="shrink-0"/>
-                      <span className={cn("whitespace-nowrap", isCollapsed && "hidden")}>Settings</span>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-          </SidebarMenu>
-        </div>
-      </SidebarFooter>
-    </div>
-  );
-}
+};
