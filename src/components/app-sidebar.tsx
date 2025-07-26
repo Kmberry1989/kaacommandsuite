@@ -1,163 +1,138 @@
 "use client";
-
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import { Button, ButtonProps } from "@/components/ui/button";
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-// Context for Sidebar state
-interface SidebarContextProps {
-  isCollapsed: boolean;
-  setCollapsed: (isCollapsed: boolean) => void;
-}
-
-const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
-
-export function useSidebar() {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider");
-  }
-  return context;
-}
-
-export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setCollapsed] = useState(false);
-  return (
-    <SidebarContext.Provider value={{ isCollapsed, setCollapsed }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-}
-
-// Sidebar Root Component
-const sidebarVariants = cva(
-  "h-full bg-background border-r flex flex-col transition-all duration-300 ease-in-out",
-  {
-    variants: {
-      isCollapsed: {
-        true: "w-16",
-        false: "w-64",
-      },
-    },
-    defaultVariants: {
-      isCollapsed: false,
-    },
-  }
-);
-
-const Sidebar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
-    const { isCollapsed } = useSidebar();
-    return (
-      <div
-        ref={ref}
-        className={cn(sidebarVariants({ isCollapsed }), className, "group")}
-        data-collapsible={isCollapsed ? "icon" : "full"}
-        {...props}
-      />
-    );
-  }
-);
-Sidebar.displayName = "Sidebar";
-
-// Sidebar Header
-const SidebarHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("p-4 flex items-center justify-between", className)}
-      {...props}
-    />
-  )
-);
-SidebarHeader.displayName = "SidebarHeader";
-
-// Sidebar Content
-const SidebarContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex-grow", className)} {...props} />
-  )
-);
-SidebarContent.displayName = "SidebarContent";
-
-// Sidebar Footer
-const SidebarFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("p-2 border-t mt-auto", className)}
-      {...props}
-    />
-  )
-);
-SidebarFooter.displayName = "SidebarFooter";
-
-// Sidebar Menu & Items
-const SidebarMenu = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
-  ({ className, ...props }, ref) => (
-    <ul ref={ref} className={cn("space-y-1", className)} {...props} />
-  )
-);
-SidebarMenu.displayName = "SidebarMenu";
-
-const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIElement>>(
-  ({ className, ...props }, ref) => (
-    <li ref={ref} className={cn("", className)} {...props} />
-  )
-);
-SidebarMenuItem.displayName = "SidebarMenuItem";
-
-interface SidebarMenuButtonProps extends ButtonProps {
-  isActive?: boolean;
-  tooltip?: string;
-}
-
-const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
-  ({ className, isActive, tooltip, children, ...props }, ref) => {
-    const { isCollapsed } = useSidebar();
-
-    const button = (
-      <Button
-        ref={ref}
-        variant={isActive ? "secondary" : "ghost"}
-        className={cn("w-full justify-start h-10", className)}
-        {...props}
-      >
-        {children}
-      </Button>
-    );
-
-    if (isCollapsed && tooltip) {
-      return (
-        <TooltipProvider>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>{button}</TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-
-    return button;
-  }
-);
-SidebarMenuButton.displayName = "SidebarMenuButton";
-
-export {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-};
+  SidebarFooter,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { SettingsDialog } from "@/components/settings-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from "@/components/ui/alert-dialog"
+import {
+  FileText,
+  Lightbulb,
+  Palette,
+  FilePlus2,
+  Settings,
+  CircleHelp,
+  ClipboardCheck,
+  DraftingCompass,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { Button } from "./ui/button";
+
+const navItems = [
+  { href: "/planner", icon: ClipboardCheck, label: "Planner" },
+  { href: "/content", icon: FileText, label: "Content Alchemist" },
+  { href: "/insights", icon: Lightbulb, label: "Insight Extractor" },
+  { href: "/visualizer", icon: Palette, label: "Artful Images" },
+  { href: "/templates", icon: FilePlus2, label: "Template Forge" },
+  { href: "/critic-construct", icon: DraftingCompass, label: "Critic Construct" },
+];
+
+// Changed to a default export to resolve build issues
+export default function AppSidebar() {
+  const pathname = usePathname();
+  const { isCollapsed, setCollapsed } = useSidebar();
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isHelpOpen, setHelpOpen] = useState(false);
+
+  return (
+    <>
+      <Sidebar>
+        <SidebarHeader>
+          <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="shrink-0">
+                  <Palette className="h-6 w-6 text-primary" />
+              </Button>
+              <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+                  <h1 className="font-headline text-lg font-semibold tracking-tight">KAA Media Command Suite</h1>
+              </div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="p-2">
+          <SidebarMenu>
+            {navItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <Link href={item.href} passHref>
+                  <SidebarMenuButton
+                    isActive={pathname?.startsWith(item.href)}
+                    tooltip={item.label}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <div className="flex flex-col gap-2">
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Help" onClick={() => setHelpOpen(true)}>
+                        <CircleHelp className="mr-3 h-5 w-5" />
+                        <span className="group-data-[collapsible=icon]:hidden">Help</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Settings" onClick={() => setSettingsOpen(true)}>
+                        <Settings className="mr-3 h-5 w-5" />
+                        <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+             <Button
+                variant="ghost"
+                className="w-full justify-start h-10"
+                onClick={() => setCollapsed(!isCollapsed)}
+            >
+                <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center">
+                    {isCollapsed ? 
+                        <ChevronRight className="mr-3 h-5 w-5" /> : 
+                        <ChevronLeft className="mr-3 h-5 w-5" />
+                    }
+                    </div>
+                    <span className="group-data-[collapsible=icon]:hidden">Collapse</span>
+                </div>
+            </Button>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+
+      {/* Dialogs that are controlled by this component's state */}
+      <SettingsDialog isOpen={isSettingsOpen} onOpenChange={setSettingsOpen} />
+      
+      <AlertDialog open={isHelpOpen} onOpenChange={setHelpOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Help</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ask your husband.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
