@@ -1,6 +1,6 @@
 "use client";
 
-import AppSidebar from "@/components/app-sidebar"; // Corrected: Use default import
+import AppSidebar from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import "../globals.css";
 
