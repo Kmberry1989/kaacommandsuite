@@ -1,29 +1,20 @@
-import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
-import { FontProvider } from "@/context/font-provider";
+"use client";
 
-const montserrat = Montserrat({ subsets: ["latin"] });
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import "../globals.css"; // Corrected path
 
-export const metadata: Metadata = {
-  title: "KAA MEDIA COMMAND SUITE",
-  description: "A command suite for the Kokomo Art Association",
-};
-
-export default function RootLayout({
+export default function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={montserrat.className}>
-        <FontProvider>
-          {children}
-          <Toaster />
-        </FontProvider>
-      </body>
-    </html>
+    <SidebarProvider>
+      <div className="flex h-screen bg-background text-foreground">
+        <AppSidebar />
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
+    </SidebarProvider>
   );
 }
