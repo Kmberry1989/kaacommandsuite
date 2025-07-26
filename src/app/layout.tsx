@@ -1,10 +1,11 @@
-import type {Metadata} from 'next';
-import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
+import type { Metadata } from "next";
+import "./globals.css";
+import { FontProvider } from "@/context/font-provider";
+import { AppBody } from "./app-body"; // Import the new client component
 
 export const metadata: Metadata = {
-  title: 'Art Hub Kokomo',
-  description: 'The command center for the Kokomo Art Association.',
+  title: "KAA MEDIA COMMAND SUITE",
+  description: "Your central command for KAA media strategy.",
 };
 
 export default function RootLayout({
@@ -14,15 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alegreya&family=Belleza&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased">
-        {children}
-        <Toaster />
-      </body>
+      <FontProvider>
+        <AppBody>{children}</AppBody>
+      </FontProvider>
     </html>
   );
 }
