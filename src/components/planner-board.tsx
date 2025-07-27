@@ -158,6 +158,7 @@ export function PlannerBoard() {
   const [embeddedFiles, setEmbeddedFiles] = useState<EmbeddedFile[]>([]);
   const [newFileUrl, setNewFileUrl] = useState("");
   const [newFileTitle, setNewFileTitle] = useState("");
+  const [activeTab, setActiveTab] = useState<string | undefined>();
   const { toast } = useToast();
 
   // Drawing state
@@ -207,9 +208,16 @@ export function PlannerBoard() {
         files.push({ id: doc.id, ...doc.data() } as EmbeddedFile);
       });
       setEmbeddedFiles(files);
+      
+      // If the currently active tab was deleted, switch to the new first tab
+      if (files.length > 0 && !files.find(f => f.id === activeTab)) {
+        setActiveTab(files[0].id);
+      } else if (files.length === 0) {
+        setActiveTab(undefined);
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [activeTab]);
   
   // Notification checker
   useEffect(() => {
@@ -389,12 +397,13 @@ export function PlannerBoard() {
   // File Embed functions
   const addFile = async () => {
       if (newFileUrl.trim() && newFileTitle.trim()) {
-        await addDoc(collection(db, "embeddedFiles"), {
+        const newFile = await addDoc(collection(db, "embeddedFiles"), {
             url: newFileUrl,
             title: newFileTitle,
         });
         setNewFileUrl("");
         setNewFileTitle("");
+        setActiveTab(newFile.id);
       }
   }
 
@@ -436,7 +445,7 @@ export function PlannerBoard() {
                             <CardContent className="flex flex-col h-[calc(100%-80px)]">
                                 <div className="flex-grow overflow-y-auto">
                                     {embeddedFiles.length > 0 ? (
-                                        <Tabs defaultValue={embeddedFiles[0].id} className="h-full flex flex-col">
+                                        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                                             <TabsList>
                                                 {embeddedFiles.map(file => (
                                                     <TabsTrigger key={file.id} value={file.id} className="relative group">
