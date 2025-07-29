@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kokomo Art Association | Governance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fdfcfb; }
+        .nav-link.active { color: #2563eb; border-bottom-color: #2563eb; }
+        .task-item.completed { text-decoration: line-through; color: #9ca3af; }
+        .task-item.completed .checkbox-icon { background-color: #2563eb; border-color: #2563eb; }
+        .task-item.completed .checkbox-icon::after { content: '✓'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; }
+        .tab.active { border-bottom-color: #2563eb; color: #2563eb; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header id="header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-200">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="font-bold text-xl text-gray-800">
+                KAA Governance Dashboard
+            </div>
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#verdict" class="nav-link text-gray-600 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors duration-300">The Verdict</a>
+                <a href="#risk" class="nav-link text-gray-600 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors duration-300">Risk Analysis</a>
+                <a href="#action-plan" class="nav-link text-gray-600 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors duration-300">Action Plan</a>
+                <a href="#communications" class="nav-link text-gray-600 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors duration-300">Communications</a>
+                <a href="#compliance" class="nav-link text-gray-600 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors duration-300">Compliance</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <section id="verdict" class="mb-16 scroll-mt-24">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-bold text-gray-900">Definitive Legal Status</h1>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">An analysis of official state and federal records confirms the Association's legal identity, revealing a critical discrepancy in public-facing information that requires immediate correction.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 items-start">
+                <div class="bg-green-50 border-2 border-green-500 rounded-xl p-6 shadow-lg">
+                    <h3 class="text-2xl font-bold text-green-800 mb-3">Correct & Official Entity</h3>
+                    <p class="text-4xl font-bold text-green-700">Kokomo Art Association Inc.</p>
+                    <ul class="mt-4 space-y-2 text-green-900">
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✓</span><strong>Entity Type:</strong> Domestic Nonprofit Corporation</li>
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✓</span><strong>IRS Status:</strong> 501(c)(3) Tax-Exempt since 1981</li>
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✓</span><strong>Source:</strong> Indiana Secretary of State, IRS Records</li>
+                    </ul>
+                </div>
+                <div class="bg-red-50 border-2 border-red-500 rounded-xl p-6 shadow-lg">
+                    <h3 class="text-2xl font-bold text-red-800 mb-3">Erroneous Public Listing</h3>
+                    <p class="text-4xl font-bold text-red-700">Kokomo Art Association, LLC</p>
+                    <ul class="mt-4 space-y-2 text-red-900">
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✗</span><strong>Entity Type:</strong> Limited Liability Company</li>
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✗</span><strong>Legal Status:</strong> Not a registered entity in Indiana</li>
+                        <li class="flex items-center"><span class="font-bold text-lg mr-2">✗</span><strong>Source:</strong> Third-party directory error (e.g., Chamber of Commerce)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-12 bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="text-2xl font-bold text-center mb-6">Why the Difference Matters: Inc. vs. LLC</h3>
+                <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">The distinction is not just a name—it's a fundamental difference in purpose, ownership, and legal structure. This misrepresentation conflicts with the Association's core identity as a public-benefit organization.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-gray-300">
+                                <th class="p-4 font-semibold text-gray-700">Feature</th>
+                                <th class="p-4 font-semibold text-green-700 bg-green-50 rounded-tl-lg">Nonprofit Corporation (Correct)</th>
+                                <th class="p-4 font-semibold text-red-700 bg-red-50 rounded-tr-lg">LLC (Incorrect)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200">
+                                <td class="p-4 font-medium">Primary Purpose</td>
+                                <td class="p-4 bg-green-50">Charitable/Educational Mission</td>
+                                <td class="p-4 bg-red-50">Typically For-Profit</td>
+                            </tr>
+                            <tr class="border-b border-gray-200">
+                                <td class="p-4 font-medium">Ownership</td>
+                                <td class="p-4 bg-green-50">Held in Public Trust (No Owners)</td>
+                                <td class="p-4 bg-red-50">Owned by "Members"</td>
+                            </tr>
+                            <tr class="border-b border-gray-200">
+                                <td class="p-4 font-medium">Profit Distribution</td>
+                                <td class="p-4 bg-green-50">Prohibited; Reinvested in Mission</td>
+                                <td class="p-4 bg-red-50">Distributed to Owners</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-medium">Primary Funding</td>
+                                <td class="p-4 bg-green-50 rounded-bl-lg">Donations, Grants, Memberships</td>
+                                <td class="p-4 bg-red-50 rounded-br-lg">Business Revenue, Investments</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="risk" class="mb-16 scroll-mt-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Risk Analysis</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">The persistence of the "LLC" error poses tangible risks to the Association's legal standing, financial stability, and public reputation. This is more than a typo; it's a liability.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-xl mb-2">⚖️ Legal & Reputational Risks</h3>
+                    <p class="text-gray-600">Undermines contract validity, projects an image of disorganization to donors and partners, and dilutes the brand by creating public confusion.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-xl mb-2">💰 Tax & Fundraising Risks</h3>
+                    <p class="text-gray-600">Jeopardizes grant applications which require precise legal information, deters donors concerned about tax deductibility, and can create state tax compliance issues.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-xl mb-2">🏛️ Governance & Fiduciary Risks</h3>
+                    <p class="text-gray-600">Represents a lapse in the Board's fiduciary duty to protect the Association's assets, including its legal standing and reputation. Action is a core governance responsibility.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="action-plan" class="mb-16 scroll-mt-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Interactive Corrective Action Plan</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">A systematic plan to rectify the discrepancy across all platforms. Check off tasks as they are completed to track progress towards full data integrity.</p>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm">
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold">Overall Progress</span>
+                        <span id="progress-percent" class="font-bold text-blue-600">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div id="task-list" class="space-y-6">
+                </div>
+            </div>
+        </section>
+
+        <section id="communications" class="mb-16 scroll-mt-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Stakeholder Communications Hub</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">A strategy to proactively and transparently inform stakeholders, framing this correction as a measure of good governance to reinforce trust.</p>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="border-b border-gray-200">
+                    <nav id="comm-tabs" class="flex flex-wrap -mb-px px-6">
+                        <button data-tab="messaging" class="tab active text-lg font-semibold p-4 border-b-2">Core Messaging</button>
+                        <button data-tab="principles" class="tab text-lg font-semibold p-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700">Principles</button>
+                        <button data-tab="qa" class="tab text-lg font-semibold p-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700">Q&A</button>
+                    </nav>
+                </div>
+                <div id="comm-content" class="p-6 md:p-8">
+                    <div data-content="messaging">
+                        <h3 class="text-xl font-bold mb-4">Primary Message for Public Use</h3>
+                        <div class="bg-gray-100 p-4 rounded-lg">
+                            <p id="copy-text" class="text-gray-700 italic">"To ensure full transparency and accuracy in all public records, the Kokomo Art Association has completed a review of its public-facing information. We have worked with community partners to correct some outdated third-party listings to accurately reflect our official legal status as **'Kokomo Art Association Inc.'**, a 501(c)(3) nonprofit corporation, a status we have proudly held since 1981."</p>
+                        </div>
+                        <button id="copy-btn" class="mt-4 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Copy Message</button>
+                        <span id="copy-feedback" class="ml-4 text-green-600 font-semibold opacity-0 transition-opacity">Copied!</span>
+                    </div>
+                    <div data-content="principles" class="hidden">
+                        <ul class="space-y-3 list-disc list-inside text-gray-700">
+                            <li><strong>Control the Narrative:</strong> Proactively communicate to prevent rumors and demonstrate competent management.</li>
+                            <li><strong>Honesty and Accuracy:</strong> Acknowledge the error, state the correct information, and explain the steps taken.</li>
+                            <li><strong>Proportional Response:</strong> Frame the effort as an administrative "data integrity initiative," not a crisis.</li>
+                        </ul>
+                    </div>
+                    <div data-content="qa" class="hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <p class="font-semibold text-gray-800">Q: Was the Association operating illegally as an LLC?</p>
+                                <p class="text-gray-600 pl-4">A: No. Our legal status has always been a valid nonprofit corporation. The issue was an inaccurate name in a public directory, which has been corrected.</p>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Q: Does this affect the tax deductibility of my past donations?</p>
+                                <p class="text-gray-600 pl-4">A: No. All donations have always been made to Kokomo Art Association Inc., a valid 501(c)(3) organization. Your donations remain fully tax-deductible.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="compliance" class="scroll-mt-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Ongoing Compliance Framework</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">A schedule of key filing and review obligations to prevent future errors and ensure the highest standards of legal and administrative hygiene.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Annually</span>
+                    <h3 class="font-bold text-xl mb-2">IRS Form 990-N Filing</h3>
+                    <p class="text-gray-600">Maintains federal 501(c)(3) tax-exempt status. Failure to file for 3 consecutive years results in auto-revocation.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Biennially</span>
+                    <h3 class="font-bold text-xl mb-2">IN Business Entity Report</h3>
+                    <p class="text-gray-600">Maintains "Active" corporate status in Indiana. Due in the anniversary month of incorporation.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-yellow-100 text-yellow-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Every 5 Years</span>
+                    <h3 class="font-bold text-xl mb-2">IN Nonprofit Report (NP-20R)</h3>
+                    <p class="text-gray-600">Maintains state-level income and sales tax exemptions. Due by May 15th on the assigned year.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Annually</span>
+                    <h3 class="font-bold text-xl mb-2">Registered Agent Verification</h3>
+                    <p class="text-gray-600">Confirms the agent on file with the state is correct and able to receive official legal notices.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Annually</span>
+                    <h3 class="font-bold text-xl mb-2">Public Listings Audit</h3>
+                    <p class="text-gray-600">Proactively checks top online listings (Google, Chamber, etc.) to prevent recurrence of errors.</p>
+                </div>
+                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="inline-block bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full mb-3">Biennially</span>
+                    <h3 class="font-bold text-xl mb-2">Bylaws Review</h3>
+                    <p class="text-gray-600">Ensures governing documents remain current and compliant with state law and best practices.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-100 border-t border-gray-200 mt-16">
+        <div class="container mx-auto px-6 py-6 text-center text-gray-600">
+            <p>&copy; 2023 Kokomo Art Association Inc. | Governance & Transparency Initiative</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const taskData = [
+                {
+                    phase: 'Phase 1: Internal Verification',
+                    tasks: [
+                        { id: 'task1', text: 'Locate & Digitize Articles of Incorporation', completed: false },
+                        { id: 'task2', text: 'Locate & Digitize Bylaws', completed: false },
+                        { id: 'task3', text: 'Locate & Digitize IRS Determination Letter', completed: false },
+                    ]
+                },
+                {
+                    phase: 'Phase 2: Third-Party Rectification',
+                    tasks: [
+                        { id: 'task4', text: 'Contact Greater Kokomo Chamber of Commerce', completed: false },
+                        { id: 'task5', text: 'Confirm Correction with Chamber', completed: false },
+                    ]
+                },
+                {
+                    phase: 'Phase 3: Digital Footprint Audit',
+                    tasks: [
+                        { id: 'task6', text: 'Audit & Correct Social Media Profiles', completed: false },
+                        { id: 'task7', text: 'Audit & Correct Online Map/Business Listings', completed: false },
+                        { id: 'task8', text: 'Audit & Correct Financial/Payment Platforms', completed: false },
+                    ]
+                },
+                {
+                    phase: 'Phase 4: Internal Document Review',
+                    tasks: [
+                        { id: 'task9', text: 'Update Website (Footer, About Us, etc.)', completed: false },
+                        { id: 'task10', text: 'Update Financial Templates (Invoices, Receipts)', completed: false },
+                        { id: 'task11', text: 'Update Grant & Sponsorship Templates', completed: false },
+                        { id: 'task12', text: 'Update Legal Contract Templates', completed: false },
+                    ]
+                }
+            ];
+
+            const taskListContainer = document.getElementById('task-list');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            function renderTasks() {
+                taskListContainer.innerHTML = '';
+                totalTasks = 0;
+                completedTasks = 0;
+
+                taskData.forEach(phase => {
+                    const phaseDiv = document.createElement('div');
+                    phaseDiv.innerHTML = `<h3 class="text-xl font-bold mb-3 text-gray-800 border-b pb-2">${phase.phase}</h3>`;
+                    const ul = document.createElement('ul');
+                    ul.className = 'space-y-3';
+                    
+                    phase.tasks.forEach(task => {
+                        totalTasks++;
+                        if (task.completed) completedTasks++;
+
+                        const li = document.createElement('li');
+                        li.className = `task-item flex items-center p-3 rounded-lg transition-colors ${task.completed ? 'completed bg-gray-50' : 'bg-white'}`;
+                        li.innerHTML = `
+                            <div class="checkbox-icon relative w-5 h-5 border-2 border-gray-300 rounded-md mr-4 cursor-pointer flex-shrink-0"></div>
+                            <span class="flex-grow">${task.text}</span>
+                        `;
+
+                        li.addEventListener('click', () => {
+                            task.completed = !task.completed;
+                            renderTasks();
+                        });
+
+                        ul.appendChild(li);
+                    });
+
+                    phaseDiv.appendChild(ul);
+                    taskListContainer.appendChild(phaseDiv);
+                });
+                updateProgress();
+            }
+
+            function updateProgress() {
+                const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                progressBar.style.width = `${percentage}%`;
+                progressPercent.textContent = `${percentage}%`;
+            }
+
+            renderTasks();
+
+            const copyBtn = document.getElementById('copy-btn');
+            const copyText = document.getElementById('copy-text').innerText;
+            const copyFeedback = document.getElementById('copy-feedback');
+
+            copyBtn.addEventListener('click', () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = copyText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    copyFeedback.classList.remove('opacity-0');
+                    setTimeout(() => {
+                        copyFeedback.classList.add('opacity-0');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+                document.body.removeChild(textarea);
+            });
+            
+            const commTabs = document.getElementById('comm-tabs');
+            const commContent = document.getElementById('comm-content');
+
+            commTabs.addEventListener('click', (e) => {
+                if(e.target.tagName === 'BUTTON') {
+                    const targetTab = e.target.dataset.tab;
+                    
+                    commTabs.querySelectorAll('button').forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.add('text-gray-500', 'hover:text-gray-700', 'border-transparent');
+                    });
+                    
+                    e.target.classList.add('active');
+                    e.target.classList.remove('text-gray-500', 'hover:text-gray-700', 'border-transparent');
+
+                    commContent.querySelectorAll('[data-content]').forEach(content => {
+                        if(content.dataset.content === targetTab) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                }
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section');
+
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 120) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
