@@ -1,19 +1,18 @@
 // src/app/(app)/governance/filing-history/page.tsx
 
+'use client'; // <-- This is the only line you need to add!
+
 import dynamic from 'next/dynamic';
 
 // Dynamically import the viewer component with SSR turned off
 const FilingHistoryViewer = dynamic(() => import('./FilingHistoryViewer'), {
   ssr: false,
-  loading: () => <p>Loading PDF viewer...</p>, // Optional: show a loading message
+  loading: () => <p>Loading PDF viewer...</p>, 
 });
 
 export default function FilingHistoryPage() {
   return (
     <div>
-      {/* This component will now only be rendered in the browser,
-        avoiding the server-side build error.
-      */}
       <FilingHistoryViewer />
     </div>
   );
