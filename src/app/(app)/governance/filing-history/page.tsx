@@ -1,48 +1,20 @@
-'use client';
+// src/app/(app)/governance/filing-history/page.tsx
 
-import { useState } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import dynamic from 'next/dynamic';
 
-// Corrected CSS imports
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-
-// Setup PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
-
-const options = {
-  cMapUrl: '/cmaps/',
-  standardFontDataUrl: '/standard_fonts/',
-};
-
-type PDFFile = string | File | null;
+// Dynamically import the viewer component with SSR turned off
+const FilingHistoryViewer = dynamic(() => import('./FilingHistoryViewer'), {
+  ssr: false,
+  loading: () => <p>Loading PDF viewer...</p>, // Optional: show a loading message
+});
 
 export default function FilingHistoryPage() {
-  const [file, setFile] = useState<PDFFile>('./990_2023.pdf');
-  const [numPages, setNumPages] = useState<number>();
-
-  function onDocumentLoadSuccess({ numPages: nextNumPages }: { numPages: number }): void {
-    setNumPages(nextNumPages);
-  }
-
   return (
-    <div className="flex justify-center">
-      <div>
-        <Document file={file} onLoadSuccess={onDocumentLoadSuccess} options={options}>
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              className="mb-4"
-            />
-          ))}
-        </Document>
-      </div>
+    <div>
+      {/* This component will now only be rendered in the browser,
+        avoiding the server-side build error.
+      */}
+      <FilingHistoryViewer />
     </div>
   );
 }
