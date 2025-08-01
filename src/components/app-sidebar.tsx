@@ -1,158 +1,161 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  useSidebar,
-} from "@/components/ui/sidebar";
+  BotMessageSquare,
+  FileText,
+  GanttChart,
+  Image,
+  LayoutDashboard,
+  PenSquare,
+  Settings,
+  Shapes,
+  Sheet,
+  Users,
+  Palette
+} from 'lucide-react';
+import { useState } from 'react';
+
 import {
-    ClipboardCheck,
-    FileText,
-    Lightbulb,
-    ImageIcon,
-    FilePlus2,
-    Palette,
-    Settings,
-    CircleHelp,
-    Menu,
-    MessageSquareWarning,
-    FolderKanban,
-    Scale,
-    GanttChartSquare,
-    ClipboardPenLine,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { SettingsDialog } from "@/components/settings-dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
-const mainNavItems = [
-  { href: "/planner", icon: ClipboardCheck, label: "Planner" },
-  { href: "/content", icon: FileText, label: "Content Alchemist" },
-  { href: "/insights", icon: Lightbulb, label: "Insight Extractor" },
-  { href: "/visualizer", icon: ImageIcon, label: "Artful Images" },
-  { href: "/templates", icon: FilePlus2, label: "Template Forge" },
-  { href: "/critic-construct", icon: MessageSquareWarning, label: "Critic Construct" },
-];
+import { cn } from '@/lib/utils';
+import { useMobile } from '@/hooks/use-mobile';
+import { SettingsDialog } from './settings-dialog';
 
-const governanceNavItems = [
-    { href: "/governance/filing-history", icon: FolderKanban, label: "Filing History" },
-    { href: "/governance/role-analyzer", icon: Scale, label: "Role Analyzer" },
-    { href: "/governance/compliance-dashboard", icon: GanttChartSquare, label: "Compliance Dashboard" },
-]
-
-export default function AppSidebar() {
+export function AppSidebar() {
   const pathname = usePathname();
-  const { setCollapsed } = useSidebar();
-  const [isSettingsOpen, setSettingsOpen] = useState(false);
-  const [isHelpOpen, setHelpOpen] = useState(false);
+  const isMobile = useMobile();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const sidebarItems = [
+    {
+      group: 'Dashboard',
+      items: [
+        {
+          link: '/dashboard',
+          label: 'Overview',
+          icon: <LayoutDashboard className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
+      group: 'Content',
+      items: [
+        {
+          link: '/content',
+          label: 'Content Hub',
+          icon: <FileText className="h-4 w-4" />,
+        },
+        {
+          link: '/templates',
+          label: 'Templates',
+          icon: <Sheet className="h-4 w-4" />,
+        },
+        {
+          link: '/scribble-diffusion',
+          label: 'Scribble Diffusion',
+          icon: <Palette className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
+      group: 'Planning',
+      items: [
+        {
+          link: '/planner',
+          label: 'Planner',
+          icon: <GanttChart className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
+      group: 'Analytics',
+      items: [
+        {
+          link: '/insights',
+          label: 'Insights',
+          icon: <BotMessageSquare className="h-4 w-4" />,
+        },
+        {
+          link: '/visualizer',
+          label: 'Visualizer',
+          icon: <Shapes className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
+      group: 'Governance',
+      items: [
+        {
+          link: '/governance/role-analyzer',
+          label: 'Role Analyzer',
+          icon: <Users className="h-4 w-4" />,
+        },
+        {
+          link: '/governance/filing-history',
+          label: 'Filing History',
+          icon: <FileText className="h-4 w-4" />,
+        },
+        {
+            link: '/governance/compliance-dashboard',
+            label: 'Compliance',
+            icon: <LayoutDashboard className="h-4 w-4" />,
+        }
+      ],
+    },
+  ];
+
+  if (isMobile) {
+    return null;
+  }
 
   return (
-    <>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 lg:hidden"
-              onClick={() => setCollapsed(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <Palette className="h-6 w-6 text-primary hidden md:block" />
-            <div className="flex flex-col group-data-[collapsible=false]:animate-in group-data-[collapsible=false]:fade-in group-data-[collapsible=false]:slide-in-from-left-4">
-              <h1 className="font-headline text-lg font-semibold tracking-tight">
-                KAA Media Command Suite
-              </h1>
-            </div>
-          </div>
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <SidebarMenu>
-            {mainNavItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname?.startsWith(item.href)}
-                    tooltip={{ children: item.label }}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-             <div className="mt-4 mb-2 ml-2 text-xs font-semibold text-muted-foreground group-data-[collapsible=true]:hidden">GOVERNANCE</div>
-             {governanceNavItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href}>
-                  <SidebarMenuButton
-                    isActive={pathname?.startsWith(item.href)}
-                    tooltip={{ children: item.label }}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-          <div className="flex flex-col gap-2">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip={{ children: "Help" }}
-                  onClick={() => setHelpOpen(true)}
-                >
-                  <CircleHelp />
-                  <span>Help</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip={{ children: "Settings" }}
-                  onClick={() => setSettingsOpen(true)}
-                >
-                  <Settings />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </div>
-        </SidebarFooter>
-      </Sidebar>
-
-      <SettingsDialog open={isSettingsOpen} onOpenChange={setSettingsOpen} />
-      <AlertDialog open={isHelpOpen} onOpenChange={setHelpOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Help</AlertDialogTitle>
-            <AlertDialogDescription>Ask your husband.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>Got it</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <div className="flex h-full w-64 flex-col gap-4 border-r bg-gray-100/40 p-4 dark:bg-gray-800/40">
+      <div className="flex h-16 items-center font-semibold">
+        <span>KAA Command Suite</span>
+      </div>
+      <Separator />
+      <div className="flex-1 overflow-y-auto">
+        <Accordion type="multiple" defaultValue={['Dashboard', 'Content', 'Planning', 'Analytics', 'Governance']} className="w-full">
+          {sidebarItems.map((group) => (
+            <AccordionItem value={group.group} key={group.group}>
+              <AccordionTrigger>{group.group}</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-2">
+                  {group.items.map((item) => (
+                    <Link href={item.link} key={item.link}>
+                      <Button
+                        variant={pathname === item.link ? 'secondary' : 'ghost'}
+                        className="w-full justify-start"
+                      >
+                        {item.icon}
+                        <span className="ml-2">{item.label}</span>
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+      <Separator />
+      <div>
+        <Button variant="ghost" className="w-full justify-start" onClick={() => setIsSettingsOpen(true)}>
+            <Settings className="h-4 w-4" />
+            <span className="ml-2">Settings</span>
+        </Button>
+        <SettingsDialog isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      </div>
+    </div>
   );
 }
+
