@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,7 +56,7 @@ export function PlannerBoard() {
     setIsClient(true);
   }, []);
 
-  const onDragEnd = (result: any) => {
+  const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination } = result;
 
@@ -131,7 +131,7 @@ export function PlannerBoard() {
         <DragDropContext onDragEnd={onDragEnd}>
           {Object.entries(columns).map(([columnId, column]) => (
             <Droppable droppableId={columnId} key={columnId}>
-              {(provided) => (
+              {(provided: DroppableProvided) => (
                 <Card ref={provided.innerRef} {...provided.droppableProps}>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>{column.name}</CardTitle>
@@ -174,7 +174,7 @@ export function PlannerBoard() {
                   <CardContent className="space-y-4">
                     {column.items.map((item, index) => (
                       <Draggable key={item.id} draggableId={item.id} index={index}>
-                        {(provided) => (
+                        {(provided: DraggableProvided) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
