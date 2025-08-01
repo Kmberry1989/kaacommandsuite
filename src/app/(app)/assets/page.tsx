@@ -1,313 +1,218 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share2, Folder, Image as ImageIcon, FileText, BarChart2, PlusCircle, Trash2, Upload } from "lucide-react";
-import Image from "next/image";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Progress } from "@/components/ui/progress";
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/page-header';
+import ScribbleCanvas from '@/components/scribble-canvas';
+import { storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL, listAll } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
+import Image from 'next/image';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
-type AssetType = "Image" | "Document" | "Chart";
+export default function AssetsPage() {
+  const [prompt, setPrompt] = useState('');
+  const [scribbleDataUrl, setScribbleDataUrl] = useState('');
+  const [generatedImageUrl, setGeneratedImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [isLoadingGallery, setIsLoadingGallery] = useState(true);
 
-type BaseAsset = {
-  id: string;
-  name: string;
-  type: AssetType;
-  date: string;
-  storagePath?: string;
-};
+  // Fetches images from Firebase Storage to display in the gallery.
+  const fetchGalleryImages = useCallback(async () => {
+    setIsLoadingGallery(true);
+    try {
+      const imagesListRef = ref(storage, 'artful-images/');
+      const result = await listAll(imagesListRef);
+      
+      const urlPromises = result.items.map((imageRef) => getDownloadURL(imageRef));
+      
+      const urls = await Promise.all(urlPromises);
+      setGalleryImages(urls.reverse()); // Show newest first
+    } catch (err) {
+      console.error('Error fetching gallery images:', err);
+    } finally {
+      setIsLoadingGallery(false);
+    }
+  }, []);
 
-type ImageAsset = BaseAsset & {
-  type: "Image";
-  src: string;
-};
+  useEffect(() => {
+    fetchGalleryImages();
+  }, [fetchGalleryImages]);
 
-type DocumentAsset = BaseAsset & { type: "Document" };
-type VisualizationAsset = BaseAsset & { type: "Chart" };
+  // Main function to handle the image generation process.
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt.');
+      return;
+    }
+    if (!scribbleDataUrl) {
+      setError('Please scribble something on the canvas.');
+      return;
+    }
 
-type Asset = ImageAsset | DocumentAsset | VisualizationAsset;
+    setIsLoading(true);
+    setError(null);
+    setGeneratedImageUrl('');
 
-// --- AssetCard Component (Moved outside and refactored) ---
-const AssetCard = ({ asset, onDelete }: { asset: Asset; onDelete: (asset: Asset) => void; }) => {
-  const getIcon = (type: AssetType) => {
-    switch (type) {
-      case "Document": return <FileText className="h-16 w-16 text-muted-foreground" />;
-      case "Chart": return <BarChart2 className="h-16 w-16 text-muted-foreground" />;
-      default: return null;
+    try {
+      // Step 1: Get a description of the scribble from the API.
+      const describeResponse = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'describeScribble',
+          imageData: scribbleDataUrl,
+        }),
+      });
+
+      if (!describeResponse.ok) {
+        const errorData = await describeResponse.json();
+        throw new Error(errorData.error || 'Failed to describe the scribble.');
+      }
+
+      const { description } = await describeResponse.json();
+      const finalPrompt = `${prompt}. The image should incorporate elements or the style from this drawing: ${description}`;
+
+      // Step 2: Generate the image with the combined prompt.
+      const generateResponse = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generateImage',
+          prompt: finalPrompt,
+        }),
+      });
+
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json();
+        throw new Error(errorData.error || 'Failed to generate image.');
+      }
+
+      const { imageUrl } = await generateResponse.json();
+      
+      // Step 3: Upload to storage and update UI.
+      if (imageUrl) {
+        const storageRef = ref(storage, `artful-images/${uuidv4()}.png`);
+        await uploadString(storageRef, imageUrl, 'data_url');
+        const downloadUrl = await getDownloadURL(storageRef);
+        
+        setGeneratedImageUrl(downloadUrl);
+        setGalleryImages(prev => [downloadUrl, ...prev]); // Add to gallery instantly
+      } else {
+        throw new Error('Image generation did not return a valid image.');
+      }
+
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Card className="overflow-hidden flex flex-col">
-      <CardContent className="p-0">
-        {asset.type === "Image" ? (
-          <Image
-            src={asset.src}
-            alt={asset.name}
-            width={400}
-            height={300}
-            className="aspect-[4/3] w-full object-cover"
-            onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x300/e2e8f0/e2e8f0?text=Error'; }}
-          />
-        ) : (
-          <div className="aspect-[4/3] w-full bg-secondary flex items-center justify-center">
-            {getIcon(asset.type)}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex-col items-start p-4 flex-grow">
-          <p className="font-semibold">{asset.name}</p>
-          <p className="text-sm text-muted-foreground mb-4">Uploaded: {asset.date}</p>
-          <div className="flex w-full justify-between items-center mt-auto">
-              <span className="text-xs py-1 px-2 rounded-full bg-secondary text-secondary-foreground">{asset.type}</span>
-              <div className="flex gap-1">
-                  <Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(asset)}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-          </div>
-      </CardFooter>
-    </Card>
-  );
-};
-
-
-export default function AssetsPage() {
-    const [assets, setAssets] = useState<Asset[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isUploadDialogOpen, setUploadDialogOpen] = useState(false);
-    const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
-    const [newAssetFile, setNewAssetFile] = useState<File | null>(null);
-    const [newAssetName, setNewAssetName] = useState("");
-    const [newAssetType, setNewAssetType] = useState<AssetType>("Image");
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [isUploading, setIsUploading] = useState(false);
-    const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    async function fetchAssets() {
-        setIsLoading(true);
-        try {
-          const imagesSnap = await getDocs(collection(db, "images"));
-          const documentsSnap = await getDocs(collection(db, "documents"));
-          const visualizationsSnap = await getDocs(collection(db, "visualizations"));
-  
-          const allAssets: Asset[] = [
-            // FIX: Explicitly set type: 'Image' to prevent undefined errors
-            ...imagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Image' } as ImageAsset)),
-            ...documentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Document' } as DocumentAsset)),
-            ...visualizationsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'Chart' } as VisualizationAsset)),
-          ];
-          
-          setAssets(allAssets.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        } catch (err) {
-          console.error("Failed to fetch assets from Firebase:", err);
-          toast({ variant: "destructive", title: "Error", description: "Could not fetch assets."});
-        } finally {
-            setIsLoading(false);
-        }
-      }
-  
-    useEffect(() => {
-      fetchAssets();
-    }, []);
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setNewAssetFile(file);
-            setNewAssetName(file.name.split('.').slice(0, -1).join('.'));
-        }
-    };
-  
-    const handleUploadAsset = async () => {
-        if (!newAssetFile) {
-            toast({ variant: "destructive", title: "No file selected", description: "Please choose a file to upload." });
-            return;
-        }
-        setIsUploading(true);
-        setUploadProgress(0);
-        
-        const collectionName = `${newAssetType.toLowerCase()}s`;
-        const storagePath = `${collectionName}/${Date.now()}_${newAssetFile.name}`;
-        const storageRef = ref(storage, storagePath);
-
-        try {
-            // Simulate progress for now, replace with actual upload task later if needed
-            await new Promise(res => setTimeout(res, 500)); setUploadProgress(30);
-            const snapshot = await uploadBytes(storageRef, newAssetFile);
-            await new Promise(res => setTimeout(res, 500)); setUploadProgress(70);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            await new Promise(res => setTimeout(res, 500)); setUploadProgress(100);
-
-            const newAssetData: Omit<Asset, 'id'> = {
-                name: newAssetName || newAssetFile.name,
-                date: new Date().toISOString().split('T')[0],
-                type: newAssetType,
-                storagePath: storagePath,
-                ...(newAssetType === 'Image' && { src: downloadURL }),
-            };
-    
-            await addDoc(collection(db, collectionName), newAssetData);
-            
-            toast({ title: "Asset Uploaded", description: `${newAssetData.name} has been added.`});
-            fetchAssets(); // Refresh assets
-            setUploadDialogOpen(false);
-            
-        } catch (error) {
-            console.error("Error uploading asset:", error);
-            toast({ variant: "destructive", title: "Upload Error", description: "Could not upload the asset."});
-        } finally {
-            setIsUploading(false);
-            setNewAssetFile(null);
-            setNewAssetName("");
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
-    };
-
-    const handleDeleteAsset = async () => {
-        if (!assetToDelete) return;
-
-        const collectionName = `${assetToDelete.type.toLowerCase()}s`;
-        
-        try {
-            // Delete from Firestore
-            await deleteDoc(doc(db, collectionName, assetToDelete.id));
-
-            // Delete from Storage if path exists
-            if (assetToDelete.storagePath) {
-                const storageRef = ref(storage, assetToDelete.storagePath);
-                await deleteObject(storageRef);
-            }
-            
-            toast({ title: "Asset Deleted", description: `${assetToDelete.name} has been removed.`});
-            fetchAssets();
-        } catch (error) {
-            console.error("Error deleting asset:", error);
-            toast({ variant: "destructive", title: "Deletion Error", description: "Could not delete the asset."});
-        } finally {
-            setAssetToDelete(null);
-        }
-    };
-  
-    const allAssets = assets;
-    const imageAssets = assets.filter(a => a.type === 'Image');
-    const documentAssets = assets.filter(a => a.type === 'Document');
-    const visualizationAssets = assets.filter(a => a.type === 'Chart');
-  
-    return (
-      <div>
-        <PageHeader
-          title="Asset Command"
-          description="A centralized library for all your creative and administrative assets."
-        >
-          <Button onClick={() => setUploadDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Upload Asset
-          </Button>
-        </PageHeader>
-        <div className="p-6 md:p-8 pt-0">
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList>
-              <TabsTrigger value="all"><Folder className="mr-2 h-4 w-4"/> All</TabsTrigger>
-              <TabsTrigger value="images"><ImageIcon className="mr-2 h-4 w-4"/> Images</TabsTrigger>
-              <TabsTrigger value="documents"><FileText className="mr-2 h-4 w-4"/> Documents</TabsTrigger>
-              <TabsTrigger value="visualizations"><BarChart2 className="mr-2 h-4 w-4"/> Charts</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="all" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {allAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
-            </TabsContent>
-            <TabsContent value="images" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {imageAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
-            </TabsContent>
-            <TabsContent value="documents" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {documentAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
-            </TabsContent>
-            <TabsContent value="visualizations" className="grid gap-6 mt-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-               {visualizationAssets.map(asset => <AssetCard key={asset.id} asset={asset} onDelete={setAssetToDelete} />)}
-            </TabsContent>
-          </Tabs>
-        </div>
-  
-         <Dialog open={isUploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upload New Asset</DialogTitle>
-              <DialogDescription>
-                Add a new image, document, or chart to your asset library.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="asset-file" className="text-right">File</Label>
-                <Input id="asset-file" type="file" ref={fileInputRef} onChange={handleFileSelect} className="col-span-3"/>
+    <div className="container mx-auto px-4 py-8">
+      <PageHeader
+        title="Artful Images"
+        description="Generate unique images by combining your text prompts with scribbles."
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Create Your Image</CardTitle>
+            <CardDescription>Follow the steps below to bring your idea to life.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <label className="text-sm font-medium block mb-2">1. Scribble your idea</label>
+              <ScribbleCanvas onScribble={setScribbleDataUrl} />
             </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="asset-name" className="text-right">Name</Label>
-                <Input id="asset-name" value={newAssetName} onChange={(e) => setNewAssetName(e.target.value)} className="col-span-3" placeholder="e.g., Summer Workshop Flyer"/>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="asset-type" className="text-right">Type</Label>
-                 <Select value={newAssetType} onValueChange={(value) => setNewAssetType(value as AssetType)}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select asset type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Image">Image</SelectItem>
-                      <SelectItem value="Document">Document</SelectItem>
-                      <SelectItem value="Chart">Chart</SelectItem>
-                    </SelectContent>
-                  </Select>
-              </div>
-              {isUploading && <Progress value={uploadProgress} className="col-span-4" />}
+            <div>
+              <label htmlFor="prompt" className="text-sm font-medium block mb-2">2. Describe your vision</label>
+              <Textarea
+                id="prompt"
+                placeholder="e.g., A majestic lion with a cosmic mane, in the style of Van Gogh."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={3}
+              />
             </div>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
-              <Button onClick={handleUploadAsset} disabled={!newAssetFile || isUploading}>
-                {isUploading ? "Uploading..." : "Upload Asset"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <Button onClick={handleGenerate} disabled={isLoading} className="w-full text-lg py-6">
+              {isLoading ? 'Conjuring...' : 'Generate Image'}
+            </Button>
+            {error && (
+                <Alert variant="destructive">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+            
+            <div className="relative w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center mt-4">
+                {isLoading && (
+                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                        <span>Generating masterpiece...</span>
+                    </div>
+                )}
+                {!isLoading && generatedImageUrl && (
+                    <Image
+                        src={generatedImageUrl}
+                        alt="Generated art"
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-lg"
+                    />
+                )}
+                 {!isLoading && !generatedImageUrl && (
+                    <p className="text-gray-400">Your new image will appear here</p>
+                )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <Dialog open={!!assetToDelete} onOpenChange={() => setAssetToDelete(null)}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Are you sure?</DialogTitle>
-                    <DialogDescription>
-                        This will permanently delete the asset "{assetToDelete?.name}". This action cannot be undone.
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setAssetToDelete(null)}>Cancel</Button>
-                    <Button variant="destructive" onClick={handleDeleteAsset}>Delete</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Image Gallery</CardTitle>
+            <CardDescription>Your previously generated images.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingGallery ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-gray-200 rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+            ) : galleryImages.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto p-2">
+                {galleryImages.map((url) => (
+                  <div key={url} className="aspect-square relative rounded-lg overflow-hidden border group">
+                    <Image
+                      src={url}
+                      alt="A generated image from the gallery"
+                      layout="fill"
+                      objectFit="cover"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-white opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-black/50 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /></svg>
+                        </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+                <div className="text-center py-12 text-gray-500">
+                    <p>Your generated images will appear here.</p>
+                </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    );
+    </div>
+  );
 }

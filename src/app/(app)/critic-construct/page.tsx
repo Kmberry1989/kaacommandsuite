@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -46,10 +48,25 @@ export default function CriticConstructPage() {
             setIsLoading(false);
         }
     };
-    
+
     const handleCopy = (text: string, title: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: "Copied to Clipboard", description: `${title} has been copied.` });
+    };
+
+    const handleSave = async () => {
+        if (!result) return;
+        try {
+            await addDoc(collection(db, "critiques"), {
+                originalPost: postText,
+                ...result,
+                savedAt: new Date().toISOString(),
+            });
+            toast({ title: "Analysis Saved", description: "The critique has been saved to your records."});
+        } catch (error) {
+            console.error("Failed to save analysis:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save the analysis." });
+        }
     };
 
     return (
@@ -110,9 +127,12 @@ export default function CriticConstructPage() {
                                     </div>
                                     <p className="text-sm text-muted-foreground flex-1">{result.critique}</p>
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="gap-2">
                                      <Button variant="outline" onClick={() => handleCopy(result.critique, "Critique")}>
                                         <Copy className="mr-2 h-4 w-4"/> Copy Critique
+                                    </Button>
+                                    <Button onClick={handleSave}>
+                                        <Save className="mr-2 h-4 w-4"/> Save Analysis
                                     </Button>
                                 </CardFooter>
                             </Card>
