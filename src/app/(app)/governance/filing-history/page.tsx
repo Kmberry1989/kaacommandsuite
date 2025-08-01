@@ -1,6 +1,13 @@
 'use client';
 import { PageHeader } from '@/components/page-header';
-import FilingHistoryViewer from './FilingHistoryViewer';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the FilingHistoryViewer to prevent server-side rendering issues
+const FilingHistoryViewer = dynamic(() => import('./FilingHistoryViewer'), {
+  ssr: false,
+  loading: () => <p>Loading document viewer...</p>
+});
+
 
 export default function FilingHistoryPage() {
   const documents = [
