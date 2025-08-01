@@ -60,6 +60,11 @@ export function AppSidebar() {
           icon: <Sheet className="h-4 w-4" />,
         },
         {
+          link: '/assets',
+          label: 'Artful Images',
+          icon: <Image className="h-4 w-4" />,
+        },
+        {
           link: '/scribble-diffusion',
           label: 'Scribble Diffusion',
           icon: <Palette className="h-4 w-4" />,
@@ -158,4 +163,3 @@ export function AppSidebar() {
     </div>
   );
 }
-

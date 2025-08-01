@@ -21,49 +21,56 @@ const ScribbleCanvas = ({ onScribble }: ScribbleCanvasProps) => {
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState([5]);
 
-  // Handles resizing the canvas to fit its container while maintaining high resolution.
+  // This function now only handles resizing, not styling.
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (canvas && canvas.parentElement) {
-      const parent = canvas.parentElement;
-      const rect = parent.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = (rect.width * 0.75) * dpr; // 4:3 aspect ratio
-      
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-        // Re-apply settings after resize
-        ctx.strokeStyle = brushColor;
-        ctx.lineWidth = brushSize[0];
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+    if (!canvas || !canvas.parentElement) return;
+
+    // Save current drawing
+    const imageData = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height);
+
+    const parent = canvas.parentElement;
+    const rect = parent.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    canvas.width = rect.width * dpr;
+    canvas.height = (rect.width * 0.75) * dpr; // 4:3 aspect ratio
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+      // Restore drawing after resize
+      if (imageData) {
+        ctx.putImageData(imageData, 0, 0);
       }
+      // Re-apply settings after resize
+      ctx.strokeStyle = brushColor;
+      ctx.lineWidth = brushSize[0];
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
     }
-  }, [brushColor, brushSize]);
+  }, [brushColor, brushSize]); // Keep dependencies to re-apply style on resize
 
   // Initialize canvas context
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        setContext(ctx);
-      }
+      setContext(ctx);
+      // Initial resize and style setup
+      resizeCanvas();
     }
-  }, []);
+  }, [resizeCanvas]);
 
   // Set up resize listener
   useEffect(() => {
-    resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => {
       window.removeEventListener('resize', resizeCanvas);
     };
   }, [resizeCanvas]);
 
-  // Update canvas context settings when brush properties change
+  // Update canvas context settings only when brush properties change
   useEffect(() => {
     if (context) {
       context.strokeStyle = brushColor;
