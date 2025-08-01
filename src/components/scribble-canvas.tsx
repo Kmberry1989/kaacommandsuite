@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { ChromePicker } from 'react-color';
 
 interface ScribbleCanvasProps {
   onScribble: (dataUrl: string) => void;
@@ -161,11 +162,7 @@ const ScribbleCanvas = ({ onScribble }: ScribbleCanvasProps) => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
-            <div className="flex gap-1 p-2">
-                {['#000000', '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#ffffff'].map(color => (
-                    <button key={color} onClick={() => setBrushColor(color)} className="w-8 h-8 rounded-full border hover:scale-110 transition-transform" style={{backgroundColor: color}}></button>
-                ))}
-            </div>
+             <ChromePicker color={brushColor} onChange={(color) => setBrushColor(color.hex)} />
           </PopoverContent>
         </Popover>
         <div className="flex items-center gap-2 w-48">
