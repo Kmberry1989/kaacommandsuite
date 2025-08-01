@@ -1,209 +1,129 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd';
+import { Rnd } from 'react-rnd';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChromePicker } from 'react-color';
+import { Plus, Brush } from 'lucide-react';
+import ScribbleCanvas from './scribble-canvas'; // Re-using the scribble canvas for the drawing board
 
-interface Task {
+interface StickyNote {
   id: string;
-  content: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
   color: string;
 }
 
-interface Columns {
-  [key: string]: {
-    name: string;
-    items: Task[];
-  };
-}
-
-const initialColumns: Columns = {
-  todo: {
-    name: 'To Do',
-    items: [],
-  },
-  inProgress: {
-    name: 'In Progress',
-    items: [],
-  },
-  done: {
-    name: 'Done',
-    items: [],
-  },
-};
-
 export function PlannerBoard() {
-  const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
-  const [newTaskContent, setNewTaskContent] = useState('');
-  const [newTaskColor, setNewTaskColor] = useState('#ffffff');
-  const [targetColumn, setTargetColumn] = useState('todo');
+  const [notes, setNotes] = useState<StickyNote[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [showDrawingBoard, setShowDrawingBoard] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
-
-    if (source.droppableId === destination.droppableId) {
-      const column = columns[source.droppableId];
-      const copiedItems = [...column.items];
-      const [removed] = copiedItems.splice(source.index, 1);
-      copiedItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...column,
-          items: copiedItems,
-        },
-      });
-    } else {
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
-      const sourceItems = [...sourceColumn.items];
-      const destItems = [...destColumn.items];
-      const [removed] = sourceItems.splice(source.index, 1);
-      destItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: destItems,
-        },
-      });
-    }
-  };
-
-  const handleAddTask = () => {
-    if (!newTaskContent.trim()) return;
-    const newTask: Task = {
-      id: `task-${new Date().getTime()}`,
-      content: newTaskContent,
-      color: newTaskColor,
+  const addNote = () => {
+    const newNote: StickyNote = {
+      id: `note-${new Date().getTime()}`,
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 200,
+      text: 'New Note',
+      color: '#ffef96', // A classic sticky note yellow
     };
-    const column = columns[targetColumn];
-    const updatedItems = [...column.items, newTask];
-    setColumns({
-      ...columns,
-      [targetColumn]: {
-        ...column,
-        items: updatedItems,
-      },
-    });
-    setNewTaskContent('');
-    setNewTaskColor('#ffffff');
+    setNotes([...notes, newNote]);
   };
 
-  const handleDeleteTask = (columnId: string, taskId: string) => {
-    const column = columns[columnId];
-    const updatedItems = column.items.filter(task => task.id !== taskId);
-    setColumns({
-      ...columns,
-      [columnId]: {
-        ...column,
-        items: updatedItems,
-      },
-    });
+  const updateNoteText = (id: string, newText: string) => {
+    setNotes(notes.map(note => (note.id === id ? { ...note, text: newText } : note)));
   };
+
+  const updateNoteColor = (id: string, newColor: string) => {
+    setNotes(notes.map(note => (note.id === id ? { ...note, color: newColor } : note)));
+  };
+
+  if (!isClient) {
+    return <p>Loading planner...</p>;
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {isClient ? (
-        <DragDropContext onDragEnd={onDragEnd}>
-          {Object.entries(columns).map(([columnId, column]) => (
-            <Droppable droppableId={columnId} key={columnId}>
-              {(provided: DroppableProvided) => (
-                <Card ref={provided.innerRef} {...provided.droppableProps}>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>{column.name}</CardTitle>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => setTargetColumn(columnId)}>
-                          <PlusCircle className="h-5 w-5" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add New Task to {column.name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <Input
-                            placeholder="Task content"
-                            value={newTaskContent}
-                            onChange={(e) => setNewTaskContent(e.target.value)}
-                          />
-                           <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline">
-                                <div className="w-6 h-6 rounded-full border mr-2" style={{ backgroundColor: newTaskColor }}></div>
-                                Select Color
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                               <ChromePicker color={newTaskColor} onChange={(color) => setNewTaskColor(color.hex)} />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button onClick={handleAddTask}>Add Task</Button>
-                          </DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {column.items.map((item, index) => (
-                      <Draggable key={item.id} draggableId={item.id} index={index}>
-                        {(provided: DraggableProvided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className="p-4 rounded-lg shadow-sm flex justify-between items-center"
-                            style={{
-                              ...provided.draggableProps.style,
-                              backgroundColor: item.color,
-                              borderLeft: `5px solid ${item.color === '#ffffff' ? '#cccccc' : item.color}`,
-                            }}
-                          >
-                            <span>{item.content}</span>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(columnId, item.id)}>
-                                <Trash2 className="h-4 w-4 text-gray-500" />
-                            </Button>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </CardContent>
-                </Card>
-              )}
-            </Droppable>
-          ))}
-        </DragDropContext>
-      ) : (
-        <p>Loading planner...</p>
-      )}
+    <div className="relative w-full h-[80vh] border rounded-lg overflow-hidden flex">
+      {/* Main Planner Area */}
+      <div className="flex-grow h-full relative bg-gray-50">
+        {notes.map(note => (
+          <Rnd
+            key={note.id}
+            size={{ width: note.width, height: note.height }}
+            position={{ x: note.x, y: note.y }}
+            onDragStop={(e, d) => {
+              setNotes(notes.map(n => (n.id === note.id ? { ...n, x: d.x, y: d.y } : n)));
+            }}
+            onResizeStop={(e, direction, ref, delta, position) => {
+              setNotes(notes.map(n => (
+                n.id === note.id
+                  ? { ...n, width: parseInt(ref.style.width, 10), height: parseInt(ref.style.height, 10), ...position }
+                  : n
+              )));
+            }}
+            className="shadow-lg"
+          >
+            <div className="w-full h-full flex flex-col rounded-md overflow-hidden" style={{ backgroundColor: note.color }}>
+              <div className="p-2 flex-grow">
+                <Textarea
+                  value={note.text}
+                  onChange={(e) => updateNoteText(note.id, e.target.value)}
+                  className="w-full h-full bg-transparent border-none resize-none focus:ring-0"
+                />
+              </div>
+               <div className="bg-gray-200 p-1 flex justify-end">
+                 <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
+                        <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: note.color }}></div>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                       <ChromePicker color={note.color} onChange={(color) => updateNoteColor(note.id, color.hex)} />
+                    </PopoverContent>
+                  </Popover>
+              </div>
+            </div>
+          </Rnd>
+        ))}
+         {showDrawingBoard && (
+            <div className="absolute inset-0 bg-white z-10">
+                <ScribbleCanvas onScribble={() => {}} />
+            </div>
+        )}
+      </div>
+
+      {/* Sidebar Controls */}
+      <div className="w-64 border-l p-4 space-y-4 flex-shrink-0 bg-white">
+        <h3 className="font-semibold text-lg">Planner Tools</h3>
+        <Button onClick={addNote} className="w-full">
+          <Plus className="mr-2 h-4 w-4" /> Add Sticky Note
+        </Button>
+         <Button onClick={() => setShowDrawingBoard(!showDrawingBoard)} className="w-full" variant="outline">
+          <Brush className="mr-2 h-4 w-4" /> {showDrawingBoard ? 'Hide' : 'Show'} Drawing Board
+        </Button>
+        <div className="pt-4">
+            <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md border"
+            />
+        </div>
+      </div>
     </div>
   );
 }
+
