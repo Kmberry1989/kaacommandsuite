@@ -17,7 +17,7 @@ import ScribbleCanvas from './scribble-canvas';
 import { Checkbox } from '@/components/ui/checkbox';
 
 
-// --- Interfaces for our data structures ---
+// --- Interfaces for our own data structures ---
 interface StickyNote {
   id: string;
   x: number;
