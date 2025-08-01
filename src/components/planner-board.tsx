@@ -8,7 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Link as LinkIcon, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChromePicker } from 'react-color';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
+import ScribbleCanvas from './scribble-canvas';
+import { Checkbox } from '@/components/ui/checkbox';
 
+
+// --- Interfaces for our data structures ---
 interface StickyNote {
   id: string;
   x: number;
@@ -25,97 +34,200 @@ interface SharedLink {
   url: string;
 }
 
+interface TodoItem {
+    id: string;
+    text: string;
+    completed: boolean;
+}
+
+
+// --- Main Planner Component ---
 export function PlannerBoard() {
   const [isClient, setIsClient] = useState(false);
+  
+  // State for all the different items you can create
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [links, setLinks] = useState<SharedLink[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+
+  // State for the input fields
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newTodoText, setNewTodoText] = useState('');
 
-  // Your Google Calendar embed URL
+  // Your KAA Google Calendar URL
   const googleCalendarUrl = "https://calendar.google.com/calendar/embed?src=media%40kaaonline.org&ctz=America%2FIndiana%2FIndianapolis";
 
+  // --- Effects for Loading/Saving data from your browser's local storage ---
   useEffect(() => {
     setIsClient(true);
-    // Load saved data from localStorage if it exists
     const savedNotes = localStorage.getItem('plannerNotes');
     const savedLinks = localStorage.getItem('plannerLinks');
-    if (savedNotes) {
-      setNotes(JSON.parse(savedNotes));
-    }
-    if (savedLinks) {
-      setLinks(JSON.parse(savedLinks));
-    }
+    const savedTodos = localStorage.getItem('plannerTodos');
+    if (savedNotes) setNotes(JSON.parse(savedNotes));
+    if (savedLinks) setLinks(JSON.parse(savedLinks));
+    if (savedTodos) setTodos(JSON.parse(savedTodos));
   }, []);
 
-  // Save notes and links to localStorage whenever they change
   useEffect(() => {
-    if(isClient) {
-        localStorage.setItem('plannerNotes', JSON.stringify(notes));
-    }
+    if (isClient) localStorage.setItem('plannerNotes', JSON.stringify(notes));
   }, [notes, isClient]);
 
   useEffect(() => {
-    if(isClient) {
-        localStorage.setItem('plannerLinks', JSON.stringify(links));
-    }
+    if (isClient) localStorage.setItem('plannerLinks', JSON.stringify(links));
   }, [links, isClient]);
 
+  useEffect(() => {
+    if (isClient) localStorage.setItem('plannerTodos', JSON.stringify(todos));
+  }, [todos, isClient]);
 
+  // --- Handler Functions for managing items ---
+
+  // Sticky Notes
   const addNote = () => {
     const newNote: StickyNote = {
-      id: `note-${Date.now()}`,
-      x: 20,
-      y: 20,
-      width: 250,
-      height: 250,
-      text: 'New Note',
-      color: '#ffef96',
+      id: `note-${Date.now()}`, x: 20, y: 20, width: 200, height: 200, text: 'New Note', color: '#FFF8B8',
     };
     setNotes([...notes, newNote]);
   };
-
   const updateNote = (id: string, updates: Partial<StickyNote>) => {
     setNotes(notes.map(note => (note.id === id ? { ...note, ...updates } : note)));
   };
-  
-  const deleteNote = (id: string) => {
-    setNotes(notes.filter(note => note.id !== id));
-  };
+  const deleteNote = (id: string) => setNotes(notes.filter(note => note.id !== id));
 
+  // Shared Links
   const addLink = () => {
     if (!newLinkTitle.trim() || !newLinkUrl.trim()) return;
-    const newLink: SharedLink = {
-      id: `link-${Date.now()}`,
-      title: newLinkTitle,
-      url: newLinkUrl,
-    };
+    let url = newLinkUrl;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+    const newLink: SharedLink = { id: `link-${Date.now()}`, title: newLinkTitle, url };
     setLinks([...links, newLink]);
     setNewLinkTitle('');
     setNewLinkUrl('');
   };
+  const deleteLink = (id: string) => setLinks(links.filter(link => link.id !== id));
 
-  const deleteLink = (id: string) => {
-    setLinks(links.filter(link => link.id !== id));
+  // To-Do Items
+  const addTodo = () => {
+      if (!newTodoText.trim()) return;
+      const newTodo: TodoItem = { id: `todo-${Date.now()}`, text: newTodoText, completed: false };
+      setTodos([...todos, newTodo]);
+      setNewTodoText('');
   };
+  const toggleTodo = (id: string) => {
+      setTodos(todos.map(todo => todo.id === id ? {...todo, completed: !todo.completed} : todo));
+  };
+  const deleteTodo = (id: string) => setTodos(todos.filter(todo => todo.id !== id));
+
 
   if (!isClient) {
     return <p className="text-center p-10">Loading Planner...</p>;
   }
 
+  // --- Render the component ---
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[85vh]">
-      {/* Left Column: Whiteboard and Sticky Notes */}
-      <div className="lg:col-span-2 h-full">
-        <Card className="h-full flex flex-col">
+    <ResizablePanelGroup direction="horizontal" className="w-full h-[85vh] border rounded-lg">
+      
+      {/* Left Panel: Calendar */}
+      <ResizablePanel defaultSize={30} minSize={20}>
+        <Card className="h-full flex flex-col rounded-none border-0 border-r">
+          <CardHeader>
+            <CardTitle>Shared Calendar</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow p-0 overflow-hidden">
+            <iframe
+              src={googleCalendarUrl}
+              style={{ borderWidth: 0 }}
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              scrolling="no"
+            ></iframe>
+          </CardContent>
+        </Card>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+
+      {/* Middle Panel: Resources & To-Do */}
+      <ResizablePanel defaultSize={30} minSize={20}>
+        <ResizablePanelGroup direction="vertical">
+          <ResizablePanel defaultSize={50} minSize={25}>
+            <Card className="h-full flex flex-col rounded-none border-0 border-b">
+              <CardHeader>
+                <CardTitle>Shared Resources</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 flex-grow flex flex-col">
+                 <div className="space-y-2 flex-grow overflow-y-auto pr-2">
+                  {links.map(link => (
+                    <div key={link.id} className="flex items-center justify-between text-sm">
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate flex-grow">
+                        <LinkIcon className="inline mr-2 h-4 w-4" />{link.title}
+                      </a>
+                      <Button variant="ghost" size="icon" className="w-6 h-6 flex-shrink-0" onClick={() => deleteLink(link.id)}>
+                        <Trash2 className="h-4 w-4 text-gray-400" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-auto pt-2">
+                  <Input placeholder="Title" value={newLinkTitle} onChange={e => setNewLinkTitle(e.target.value)} />
+                  <Input placeholder="URL" value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} />
+                  <Button onClick={addLink} size="icon"><Plus className="h-4 w-4"/></Button>
+                </div>
+              </CardContent>
+            </Card>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={50} minSize={25}>
+             <Card className="h-full flex flex-col rounded-none border-0">
+                <CardHeader>
+                    <CardTitle>To-Do List</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 flex-grow flex flex-col">
+                    <div className="space-y-2 flex-grow overflow-y-auto pr-2">
+                        {todos.map(todo => (
+                            <div key={todo.id} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <Checkbox id={todo.id} checked={todo.completed} onCheckedChange={() => toggleTodo(todo.id)} />
+                                    <label htmlFor={todo.id} className={`cursor-pointer ${todo.completed ? 'line-through text-gray-400' : ''}`}>{todo.text}</label>
+                                </div>
+                                <Button variant="ghost" size="icon" className="w-6 h-6 flex-shrink-0" onClick={() => deleteTodo(todo.id)}>
+                                    <Trash2 className="h-4 w-4 text-gray-400" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 mt-auto pt-2">
+                        <Input placeholder="New to-do..." value={newTodoText} onChange={e => setNewTodoText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTodo()} />
+                        <Button onClick={addTodo}><Plus className="h-4 w-4"/></Button>
+                    </div>
+                </CardContent>
+            </Card>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </ResizablePanel>
+      
+      <ResizableHandle withHandle />
+
+      {/* Right Panel: Drawing Board & Sticky Notes */}
+      <ResizablePanel defaultSize={40} minSize={25}>
+        <Card className="h-full flex flex-col rounded-none border-0 border-l">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Collaborative Whiteboard</CardTitle>
+            <CardTitle>Whiteboard</CardTitle>
             <Button onClick={addNote}>
-              <Plus className="mr-2 h-4 w-4" /> Add Sticky Note
+              <Plus className="mr-2 h-4 w-4" /> Add Note
             </Button>
           </CardHeader>
-          <CardContent className="flex-grow relative bg-gray-100 rounded-b-lg">
-            {notes.map(note => (
+          <CardContent className="flex-grow relative rounded-b-lg p-0">
+             {/* The drawing canvas will be the background */}
+             <div className="absolute inset-0">
+                <ScribbleCanvas onScribble={() => {}} />
+             </div>
+             {/* Sticky notes go on top */}
+             {notes.map(note => (
               <Rnd
                 key={note.id}
                 size={{ width: note.width, height: note.height }}
@@ -129,7 +241,7 @@ export function PlannerBoard() {
                   });
                 }}
                 bounds="parent"
-                className="shadow-lg"
+                className="shadow-lg z-10"
               >
                 <div className="w-full h-full flex flex-col rounded-md overflow-hidden border border-gray-300" style={{ backgroundColor: note.color }}>
                   <Textarea
@@ -157,50 +269,7 @@ export function PlannerBoard() {
             ))}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Right Column: Calendar and Shared Resources */}
-      <div className="lg:col-span-1 h-full flex flex-col gap-6">
-        <Card className="flex-grow flex flex-col">
-          <CardHeader>
-            <CardTitle>Shared Calendar</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow p-0 rounded-b-lg overflow-hidden">
-            <iframe
-              src={googleCalendarUrl}
-              style={{ borderWidth: 0 }}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              scrolling="no"
-            ></iframe>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Shared Resources</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-              {links.map(link => (
-                <div key={link.id} className="flex items-center justify-between text-sm">
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
-                    <LinkIcon className="inline mr-2 h-4 w-4" />{link.title}
-                  </a>
-                   <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => deleteLink(link.id)}>
-                        <Trash2 className="h-4 w-4 text-gray-400" />
-                    </Button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input placeholder="Title" value={newLinkTitle} onChange={e => setNewLinkTitle(e.target.value)} />
-              <Input placeholder="URL" value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} />
-              <Button onClick={addLink} size="icon"><Plus className="h-4 w-4"/></Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
