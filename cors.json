@@ -1,10 +1,16 @@
 [
   {
-    "origin": ["https://kaacommandsuite.vercel.app", "http://localhost:3000"],
-    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "origin": [
+      "https://kaacommandsuite.vercel.app",
+      "https://kaacommandsuite-robgjkgbb-kyle-matthew-berry-s-projects.vercel.app",
+      "https://kaacommandsuite-9675tc8fr-kyle-matthew-berry-s-projects.vercel.app",
+      "http://localhost:3000"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
     "responseHeader": [
       "Content-Type",
-      "Access-Control-Allow-Origin"
+      "Access-Control-Allow-Origin",
+      "x-goog-resumable"
     ],
     "maxAgeSeconds": 3600
   }
