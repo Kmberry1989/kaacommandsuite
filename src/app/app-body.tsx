@@ -30,16 +30,16 @@ export function AppBody({ children }: { children: React.ReactNode }) {
     <body
       className={cn("font-sans antialiased", fontClass)}
       style={{
-        backgroundImage: 'url(/wallpaper-trending.png)',
-        backgroundRepeat: 'repeat',
-        backgroundSize: '540px 540px',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        opacity: 0.15,
-        zIndex: 0,
+        backgroundColor: "#000000",
+        backgroundImage:
+          "linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(/wallpaper-trending.png)",
+        backgroundRepeat: "repeat",
+        backgroundSize: "540px 540px",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
       }}
     >
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div style={{ position: "relative", zIndex: 1 }}>
         <Toaster />
         {children}
       </div>
