@@ -30,9 +30,9 @@ export function AppBody({ children }: { children: React.ReactNode }) {
     <body
       className={cn("font-sans antialiased", fontClass)}
       style={{
-        backgroundColor: "#000000",
+        backgroundColor: "#FFFFFF",
         backgroundImage:
-          "linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(/wallpaper-trending.png)",
+          "linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url(/wallpaper-trending.png)",
         backgroundRepeat: "repeat",
         backgroundSize: "540px 540px",
         backgroundPosition: "center",
