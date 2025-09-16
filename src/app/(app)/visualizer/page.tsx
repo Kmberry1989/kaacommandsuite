@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { generateCustomArtImages } from "@/ai/flows/generate-custom-art-images";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Wand2, Download, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CANVAS_PRESETS, getCanvasPreset } from "@/lib/canvas-presets";
+import { resizeDataUrl } from "@/lib/image-utils";
 
 export default function VisualizerPage() {
   const [prompt, setPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [selectedSizeId, setSelectedSizeId] = useState<string>(CANVAS_PRESETS[0].id);
+  const selectedPreset = useMemo(() => getCanvasPreset(selectedSizeId), [selectedSizeId]);
 
   async function handleGenerateImage() {
     if (prompt.trim().length < 10) {
@@ -29,8 +40,20 @@ export default function VisualizerPage() {
     setIsLoading(true);
     setImageUrl(null);
     try {
-      const result = await generateCustomArtImages({ prompt });
-      setImageUrl(result.imageUrl);
+      const orientationHint = `The artwork should be composed for a ${selectedPreset.label.toLowerCase()} canvas (${selectedPreset.ratioLabel}, ${selectedPreset.width}x${selectedPreset.height} pixels).`;
+      const finalPrompt = `${prompt.trim()} ${orientationHint}`.trim();
+      const result = await generateCustomArtImages({ prompt: finalPrompt });
+      let finalImageUrl = result.imageUrl;
+      try {
+        finalImageUrl = await resizeDataUrl(
+          result.imageUrl,
+          selectedPreset.width,
+          selectedPreset.height,
+        );
+      } catch (resizeError) {
+        console.error('Error resizing generated image:', resizeError);
+      }
+      setImageUrl(finalImageUrl);
     } catch (error) {
       console.error(error);
       toast({
@@ -49,6 +72,16 @@ export default function VisualizerPage() {
     "A digital illustration of a futuristic art gallery opening.",
     "A whimsical chalk drawing of local landmarks."
   ]
+
+  const handleDownload = () => {
+    if (!imageUrl) return;
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `artful-image-${selectedPreset.width}x${selectedPreset.height}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div>
@@ -71,6 +104,24 @@ export default function VisualizerPage() {
               placeholder="e.g., 'A stylized, colorful poster for a jazz music festival in an art gallery, art deco style.'"
               className="min-h-[200px] resize-y"
             />
+            <div className="mt-4 space-y-2">
+              <h4 className="text-sm font-medium">Canvas size</h4>
+              <Select value={selectedSizeId} onValueChange={setSelectedSizeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a canvas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CANVAS_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.label} • {preset.ratioLabel} ({preset.width}×{preset.height})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedPreset.description} — exports at {selectedPreset.width}×{selectedPreset.height}px.
+              </p>
+            </div>
             <div className="mt-4">
               <h4 className="text-sm font-medium mb-2">Creative Suggestions</h4>
               <div className="space-y-2">
@@ -94,19 +145,22 @@ export default function VisualizerPage() {
           <CardHeader>
             <CardTitle className="font-headline">Generated Image</CardTitle>
             <CardDescription>
-              Your AI-generated image will appear here.
+              Sized for a {selectedPreset.label.toLowerCase()} canvas ({selectedPreset.ratioLabel}).
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-center">
-            <div className="aspect-square w-full max-w-lg rounded-lg border border-dashed flex items-center justify-center bg-muted/50">
+            <div
+              className="w-full max-w-lg rounded-lg border border-dashed flex items-center justify-center bg-muted/50"
+              style={{ aspectRatio: `${selectedPreset.width} / ${selectedPreset.height}` }}
+            >
               {isLoading ? (
                 <Skeleton className="h-full w-full" />
               ) : imageUrl ? (
                 <Image
                   src={imageUrl}
-                  alt={prompt}
-                  width={512}
-                  height={512}
+                  alt={prompt || 'Generated art'}
+                  width={selectedPreset.width}
+                  height={selectedPreset.height}
                   className="rounded-md object-cover"
                 />
               ) : (
@@ -119,7 +173,11 @@ export default function VisualizerPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" disabled={!imageUrl || isLoading}>
+            <Button
+              variant="outline"
+              disabled={!imageUrl || isLoading}
+              onClick={handleDownload}
+            >
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>

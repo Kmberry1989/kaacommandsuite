@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,15 @@ import { Terminal } from 'lucide-react';
 import { storage } from '@/lib/firebase';
 import { ref, uploadString, getDownloadURL, listAll } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { CANVAS_PRESETS, getCanvasPreset, type CanvasPreset } from '@/lib/canvas-presets';
+import { resizeDataUrl } from '@/lib/image-utils';
 
 export default function AssetsPage() {
   const [prompt, setPrompt] = useState('');
@@ -19,6 +28,8 @@ export default function AssetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [isLoadingGallery, setIsLoadingGallery] = useState(true);
+  const [selectedSizeId, setSelectedSizeId] = useState<string>(CANVAS_PRESETS[0].id);
+  const selectedPreset = useMemo(() => getCanvasPreset(selectedSizeId), [selectedSizeId]);
 
   const storagePath = 'artful-images/';
 
@@ -61,12 +72,14 @@ export default function AssetsPage() {
     setError(null);
     setGeneratedImageUrl('');
     try {
+      const orientationHint = `The artwork should be composed for a ${selectedPreset.label.toLowerCase()} canvas (${selectedPreset.ratioLabel}, ${selectedPreset.width}x${selectedPreset.height} pixels).`;
+      const finalPrompt = `${prompt.trim()} ${orientationHint}`.trim();
       const response = await fetch('/api/assets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'generateImage', prompt }),
+        body: JSON.stringify({ action: 'generateImage', prompt: finalPrompt }),
       });
 
       if (!response.ok) {
@@ -77,8 +90,18 @@ export default function AssetsPage() {
       const { imageUrl } = await response.json();
       
       if (imageUrl) {
+        let processedImageData = imageUrl;
+        try {
+          processedImageData = await resizeDataUrl(
+            imageUrl,
+            selectedPreset.width,
+            selectedPreset.height,
+          );
+        } catch (resizeError) {
+          console.error('Error resizing generated image:', resizeError);
+        }
         const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
-        await uploadString(storageRef, imageUrl, 'data_url');
+        await uploadString(storageRef, processedImageData, 'data_url');
         const downloadUrl = await getDownloadURL(storageRef);
         
         setGeneratedImageUrl(downloadUrl);
@@ -115,6 +138,24 @@ export default function AssetsPage() {
               onChange={(e) => setPrompt(e.target.value)}
               rows={5}
             />
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Canvas size</h4>
+              <Select value={selectedSizeId} onValueChange={setSelectedSizeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a canvas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CANVAS_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.label} • {preset.ratioLabel} ({preset.width}×{preset.height})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedPreset.description} — exports at {selectedPreset.width}×{selectedPreset.height}px.
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {examplePrompts.map((p) => (
                 <Button key={p} variant="outline" size="sm" onClick={() => setPrompt(p)}>
@@ -132,7 +173,10 @@ export default function AssetsPage() {
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
-            <div className="relative w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center mt-4">
+            <div
+              className="relative w-full bg-gray-100 rounded-lg flex items-center justify-center mt-4 border border-dashed"
+              style={{ aspectRatio: `${selectedPreset.width} / ${selectedPreset.height}` }}
+            >
                 {isLoading && (
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
@@ -143,9 +187,9 @@ export default function AssetsPage() {
                     <Image
                         src={generatedImageUrl}
                         alt="Generated art"
-                        layout="fill"
-                        objectFit="contain"
-                        className="rounded-lg"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="rounded-lg object-contain"
                     />
                 )}
                  {!isLoading && !generatedImageUrl && (

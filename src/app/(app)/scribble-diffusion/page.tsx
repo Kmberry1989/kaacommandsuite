@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { CANVAS_PRESETS, type CanvasPreset } from '@/lib/canvas-presets';
+import { resizeDataUrl } from '@/lib/image-utils';
 
 export default function ScribbleDiffusionPage() {
   const [prompt, setPrompt] = useState('');
@@ -21,6 +23,7 @@ export default function ScribbleDiffusionPage() {
   const [error, setError] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [isLoadingGallery, setIsLoadingGallery] = useState(true);
+  const [canvasPreset, setCanvasPreset] = useState<CanvasPreset>(CANVAS_PRESETS[0]);
 
   const storagePath = 'scribble-diffusion-images/';
 
@@ -76,7 +79,8 @@ export default function ScribbleDiffusionPage() {
       }
 
       const { description } = await describeResponse.json();
-      const finalPrompt = `${prompt}. The image should incorporate elements or the style from this drawing: ${description}`;
+      const orientationHint = `The artwork should be composed for a ${canvasPreset.label.toLowerCase()} canvas (${canvasPreset.ratioLabel}, ${canvasPreset.width}x${canvasPreset.height} pixels).`;
+      const finalPrompt = `${prompt}. The image should incorporate elements or the style from this drawing: ${description}. ${orientationHint}`;
 
       // Step 2: Generate the image with the combined prompt.
       const generateResponse = await fetch('/api/assets', {
@@ -94,11 +98,21 @@ export default function ScribbleDiffusionPage() {
       }
 
       const { imageUrl } = await generateResponse.json();
-      
+
       // Step 3: Upload to storage and update UI.
       if (imageUrl) {
+        let processedImageData = imageUrl;
+        try {
+          processedImageData = await resizeDataUrl(
+            imageUrl,
+            canvasPreset.width,
+            canvasPreset.height,
+          );
+        } catch (resizeError) {
+          console.error('Error resizing generated image:', resizeError);
+        }
         const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
-        await uploadString(storageRef, imageUrl, 'data_url');
+        await uploadString(storageRef, processedImageData, 'data_url');
         const downloadUrl = await getDownloadURL(storageRef);
         
         setGeneratedImageUrl(downloadUrl);
@@ -129,7 +143,10 @@ export default function ScribbleDiffusionPage() {
           <CardContent className="space-y-6">
             <div>
               <label className="text-sm font-medium block mb-2">1. Scribble your idea</label>
-              <ScribbleCanvas onScribble={setScribbleDataUrl} />
+              <ScribbleCanvas
+                onScribble={setScribbleDataUrl}
+                onConfigChange={setCanvasPreset}
+              />
             </div>
             <div>
               <label htmlFor="prompt" className="text-sm font-medium block mb-2">2. Describe your vision</label>
@@ -152,7 +169,10 @@ export default function ScribbleDiffusionPage() {
                 </Alert>
             )}
             
-            <div className="relative w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center mt-4">
+            <div
+              className="relative w-full bg-gray-100 rounded-lg flex items-center justify-center mt-4 border border-dashed"
+              style={{ aspectRatio: `${canvasPreset.width} / ${canvasPreset.height}` }}
+            >
                 {isLoading && (
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
@@ -163,9 +183,9 @@ export default function ScribbleDiffusionPage() {
                     <Image
                         src={generatedImageUrl}
                         alt="Generated art"
-                        layout="fill"
-                        objectFit="contain"
-                        className="rounded-lg"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="rounded-lg object-contain"
                     />
                 )}
                  {!isLoading && !generatedImageUrl && (
