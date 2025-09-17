@@ -245,8 +245,17 @@ const ScribbleCanvas = ({ onScribble }: ScribbleCanvasProps) => {
           onChange={e => {
             const file = e.target.files?.[0];
             if (file) {
+              // Enforce image constraints (max 1024x1024, file size < 2MB)
+              if (file.size > 2 * 1024 * 1024) {
+                alert('Image file too large (max 2MB).');
+                return;
+              }
               const img = new window.Image();
               img.onload = () => {
+                if (img.width > 1024 || img.height > 1024) {
+                  alert('Image dimensions too large (max 1024x1024).');
+                  return;
+                }
                 setBackgroundImage(img);
                 const ctx = canvasRef.current?.getContext('2d');
                 if (ctx && canvasRef.current) {
@@ -266,6 +275,35 @@ const ScribbleCanvas = ({ onScribble }: ScribbleCanvasProps) => {
         >
           Upload Image
         </Button>
+        {backgroundImage && (
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" onClick={() => setBackgroundImage(null)}>Remove</Button>
+            <Button variant="outline" onClick={() => {
+              // Resize image to fit canvas
+              if (canvasRef.current && backgroundImage) {
+                const ctx = canvasRef.current.getContext('2d');
+                if (ctx) {
+                  ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                  ctx.drawImage(backgroundImage, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                  onScribble(canvasRef.current.toDataURL('image/png'));
+                }
+              }
+            }}>Resize to Canvas</Button>
+            <Button variant="outline" onClick={() => {
+              // Move image (simple implementation: re-center)
+              if (canvasRef.current && backgroundImage) {
+                const ctx = canvasRef.current.getContext('2d');
+                if (ctx) {
+                  ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                  const x = (canvasRef.current.width - backgroundImage.width) / 2;
+                  const y = (canvasRef.current.height - backgroundImage.height) / 2;
+                  ctx.drawImage(backgroundImage, x, y, backgroundImage.width, backgroundImage.height);
+                  onScribble(canvasRef.current.toDataURL('image/png'));
+                }
+              }
+            }}>Center Image</Button>
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center justify-center gap-4 w-full">
         <Popover>

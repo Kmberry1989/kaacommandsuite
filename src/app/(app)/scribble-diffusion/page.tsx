@@ -24,25 +24,11 @@ export default function ScribbleDiffusionPage() {
 
   const storagePath = 'scribble-diffusion-images/';
 
-  // Fetches images from Firebase Storage to display in the gallery.
-  const fetchGalleryImages = useCallback(async () => {
-    setIsLoadingGallery(true);
-    try {
-      const imagesListRef = ref(storage, storagePath);
-      const result = await listAll(imagesListRef);
-      const urlPromises = result.items.map((imageRef) => getDownloadURL(imageRef));
-      const urls = await Promise.all(urlPromises);
-      setGalleryImages(urls.reverse()); // Show newest first
-    } catch (err) {
-      console.error('Error fetching gallery images:', err);
-    } finally {
-      setIsLoadingGallery(false);
-    }
-  }, []);
-
+  // Gallery fetch disabled
   useEffect(() => {
-    fetchGalleryImages();
-  }, [fetchGalleryImages]);
+    setGalleryImages([]);
+    setIsLoadingGallery(false);
+  }, []);
 
   // Main function to handle the image generation process.
   const handleGenerate = async () => {
@@ -95,14 +81,15 @@ export default function ScribbleDiffusionPage() {
 
       const { imageUrl } = await generateResponse.json();
       
-      // Step 3: Upload to storage and update UI.
+      // Step 3: (DISABLED) Upload to storage and update UI.
       if (imageUrl) {
-        const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
-        await uploadString(storageRef, imageUrl, 'data_url');
-        const downloadUrl = await getDownloadURL(storageRef);
-        
-        setGeneratedImageUrl(downloadUrl);
-        setGalleryImages(prev => [downloadUrl, ...prev]); // Add to gallery instantly
+        // const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
+        // await uploadString(storageRef, imageUrl, 'data_url');
+        // const downloadUrl = await getDownloadURL(storageRef);
+        // setGeneratedImageUrl(downloadUrl);
+        // setGalleryImages(prev => [downloadUrl, ...prev]);
+        setError('Image saving to gallery is temporarily disabled.');
+        setGeneratedImageUrl(imageUrl); // Show generated image only
       } else {
         throw new Error('Image generation did not return a valid image.');
       }
@@ -160,13 +147,28 @@ export default function ScribbleDiffusionPage() {
                     </div>
                 )}
                 {!isLoading && generatedImageUrl && (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
                     <Image
-                        src={generatedImageUrl}
-                        alt="Generated art"
-                        layout="fill"
-                        objectFit="contain"
-                        className="rounded-lg"
+                      src={generatedImageUrl}
+                      alt="Generated art"
+                      layout="fill"
+                      objectFit="contain"
+                      className="rounded-lg"
                     />
+                    <Button
+                      className="mt-2"
+                      onClick={() => {
+                        try {
+                          localStorage.setItem('scribbleDiffusionImage', generatedImageUrl);
+                          setError('Image saved to local storage!');
+                        } catch (e) {
+                          setError('Failed to save image to local storage.');
+                        }
+                      }}
+                    >
+                      Save to Local Storage
+                    </Button>
+                  </div>
                 )}
                  {!isLoading && !generatedImageUrl && (
                     <p className="text-gray-400">Your new image will appear here</p>

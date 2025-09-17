@@ -69,6 +69,11 @@ export function AppSidebar() {
           label: 'Scribble Diffusion',
           icon: <Palette className="h-4 w-4" />,
         },
+        {
+          link: '/critic-construct',
+          label: 'Critic Construct',
+          icon: <PenSquare className="h-4 w-4" />,
+        },
       ],
     },
     {

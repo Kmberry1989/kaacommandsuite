@@ -27,22 +27,9 @@ export function AppBody({ children }: { children: React.ReactNode }) {
   const fontClass = fontMap[font]?.className || inter.className;
 
   return (
-    <body
-      className={cn("font-sans antialiased", fontClass)}
-      style={{
-        backgroundImage: 'url(/wallpaper-trending.png)',
-        backgroundRepeat: 'repeat',
-        backgroundSize: '540px 540px',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        opacity: 0.15,
-        zIndex: 0,
-      }}
-    >
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <Toaster />
-        {children}
-      </div>
+    <body className={cn("font-sans antialiased", fontClass)}>
+      <Toaster />
+      {children}
     </body>
   );
 }

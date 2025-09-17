@@ -31,25 +31,11 @@ export default function AssetsPage() {
     "A watercolor of the Wildcat Creek",
   ];
 
-  // Fetches images from Firebase Storage to display in the gallery.
-  const fetchGalleryImages = useCallback(async () => {
-    setIsLoadingGallery(true);
-    try {
-      const imagesListRef = ref(storage, storagePath);
-      const result = await listAll(imagesListRef);
-      const urlPromises = result.items.map((imageRef) => getDownloadURL(imageRef));
-      const urls = await Promise.all(urlPromises);
-      setGalleryImages(urls.reverse()); // Show newest first
-    } catch (err) {
-      console.error('Error fetching gallery images:', err);
-    } finally {
-      setIsLoadingGallery(false);
-    }
-  }, []);
-
+  // Gallery fetch disabled
   useEffect(() => {
-    fetchGalleryImages();
-  }, [fetchGalleryImages]);
+    setGalleryImages([]);
+    setIsLoadingGallery(false);
+  }, []);
 
 
   const handleGenerate = async () => {
@@ -77,12 +63,13 @@ export default function AssetsPage() {
       const { imageUrl } = await response.json();
       
       if (imageUrl) {
-        const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
-        await uploadString(storageRef, imageUrl, 'data_url');
-        const downloadUrl = await getDownloadURL(storageRef);
-        
-        setGeneratedImageUrl(downloadUrl);
-        setGalleryImages(prev => [downloadUrl, ...prev]);
+        // const storageRef = ref(storage, `${storagePath}${uuidv4()}.png`);
+        // await uploadString(storageRef, imageUrl, 'data_url');
+        // const downloadUrl = await getDownloadURL(storageRef);
+        // setGeneratedImageUrl(downloadUrl);
+        // setGalleryImages(prev => [downloadUrl, ...prev]);
+        setError('Image saving to gallery is temporarily disabled.');
+        setGeneratedImageUrl(imageUrl); // Show generated image only
       } else {
         throw new Error('Image generation did not return a valid image.');
       }
